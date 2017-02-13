@@ -96,7 +96,7 @@ public class ReadInput {
         readSequenceFromFile(fileName);
         for (int i = 0; i < description.length; i++) {
             Sequence s = new Sequence();
-            s.label = description[i].split(" ")[0];
+            s.label = description[i].replace(',', ';'); //description[i].split(" ")[0];
             s.seq = sequence[i];
             sequences.add(s);
         }
