@@ -599,65 +599,6 @@ public class FindFRs {
             }
             seqFROut.close();
 
-//            int[] tryVal = {200, 400, 600};
-//            String[] desgStrains = {"CBS7960_WashU_2011", "Kyokai7_NRIB_2011", "ZTW1_Zhejiang_2012", "UC5_WashU_2011"};
-//            TreeSet<String> desgStrnSet = new TreeSet<String>();
-//            for (String s : desgStrains) {
-//                desgStrnSet.add(s);
-//            }
-//            for (int maxFR : tryVal) {
-//                TreeMap<String, TreeMap<Integer, TreeSet<Integer>>> strainNeighbors = new TreeMap<String, TreeMap<Integer, TreeSet<Integer>>>();
-//                TreeSet<Integer> nodes = new TreeSet<Integer>();
-//                for (int fr = 0; fr < paths.length; fr++) {
-//                    String strain = getStrainForSeq(fr);
-//                    if (!strainNeighbors.containsKey(strain)) {
-//                        strainNeighbors.put(strain, new TreeMap<Integer, TreeSet<Integer>>());
-//                    }
-//                    int prev = -1;
-//                    for (int j = 0; j < paths[fr].length; j++) {
-//                        int k = 0;
-//                        while (nodeFRset.containsKey(paths[fr][j]) && k < nodeFRset.get(paths[fr][j]).size() && nodeFRset.get(paths[fr][j]).get(k) < maxFR) {
-//                            k++;
-//                        }
-//                        if (nodeFRset.containsKey(paths[fr][j]) && k > 0 && nodeFRset.get(paths[fr][j]).get(k - 1) != prev) {
-//                            if (prev != -1) {
-//                                // small mod to generate simpler graph:
-//                                String xstrain = strain;
-//                                if (!desgStrnSet.contains(strain)) {
-//                                    xstrain = "other";
-//                                }
-//                                if (!strainNeighbors.containsKey("other")) {
-//                                    strainNeighbors.put("other", new TreeMap<Integer, TreeSet<Integer>>());
-//                                }
-//
-//                                if (!strainNeighbors.get(xstrain).containsKey(prev)) {
-//                                    strainNeighbors.get(xstrain).put(prev, new TreeSet<Integer>());
-//                                }
-//                                strainNeighbors.get(xstrain).get(prev).add(nodeFRset.get(paths[fr][j]).get(k - 1));
-//                                nodes.add(prev);
-//                                nodes.add(nodeFRset.get(paths[fr][j]).get(k - 1));
-//                            }
-//                            prev = nodeFRset.get(paths[fr][j]).get(k - 1);
-//                        }
-//                    }
-//                }
-//                BufferedWriter afsGraphOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + "-mafs" + maxFR + ".afsgraph.dot"));
-//                afsGraphOut.write("digraph {\n\n");
-//                System.out.println("frgraph # nodes: " + nodes.size());
-//                int strainNum = 0;
-//                for (String strain : strainNeighbors.keySet()) {
-//                    afsGraphOut.write("\nsubgraph \"" + strain + "\" {\n" + "edge [color=black]\n\n");
-//                    for (Integer u : strainNeighbors.get(strain).keySet()) {
-//                        for (Integer v : strainNeighbors.get(strain).get(u)) {
-//                            afsGraphOut.write(u + " -> " + v + ";\n");
-//                        }
-//                    }
-//                    afsGraphOut.write("}\n");
-//                    strainNum++;
-//                }
-//                afsGraphOut.write("}\n");
-//                afsGraphOut.close();
-//            }
             System.out.println("done");
         } catch (Exception ex) {
             ex.printStackTrace();
