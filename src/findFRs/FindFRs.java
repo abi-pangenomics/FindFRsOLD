@@ -114,7 +114,6 @@ public class FindFRs {
 //        }
 //        return b;
 //    }
-
     static void buildPaths() {
         ArrayList<ArrayList<Integer>> pathsAL = new ArrayList<ArrayList<Integer>>();
         int curStart = 1;
@@ -481,14 +480,13 @@ public class FindFRs {
 //        }
 //        return strain;
 //    }
-
     static void outputResults() {
         try {
             String paramString = "-k" + K + "-a" + alpha + "-sup" + minSup + "-size" + minSize;
             String[] tmp = dotFile.split("/");
-            String dotName = tmp[tmp.length-1];
+            String dotName = tmp[tmp.length - 1];
             tmp = fastaFile.split("/");
-            String fastaName = tmp[tmp.length-1];
+            String fastaName = tmp[tmp.length - 1];
             String filePrefix = dotName + "-" + fastaName;
             String rd = "results-" + filePrefix + "/";
             File resultsDir = new File(rd);
@@ -510,9 +508,9 @@ public class FindFRs {
             HashMap<Integer, TreeSet<Integer>> nodeFRset = new HashMap<Integer, TreeSet<Integer>>();
             while ((top = bestQ.poll()) != null) {
                 ConcurrentLinkedQueue<PathSegment> supportingSegments = findSupport(top);
-                String afsname = "fr-" + maxFR;
+                String frName = "fr-" + maxFR;
                 HashSet<Integer> clustNodes = top.getNodeSet();
-                frOut.write(afsname);
+                frOut.write(frName);
                 for (Integer n : clustNodes) {
                     frOut.write("," + n);
                     if (!nodeFRset.containsKey(n)) {
@@ -524,7 +522,7 @@ public class FindFRs {
                 int totalLen = 0;
                 for (PathSegment ps : supportingSegments) {
                     String name = sequences.get(ps.path).label;
-                    //String strain = getStrainForSeq(ps.path); // yeast only
+
                     if (!seqFRcount.containsKey(name)) {
                         seqFRcount.put(name, new TreeMap<Integer, Integer>());
                     }
@@ -533,8 +531,8 @@ public class FindFRs {
                     }
                     seqFRcount.get(name).put(maxFR, seqFRcount.get(name).get(maxFR) + 1);
                     int[] startStop = findFastaLoc(ps);
-                    int afsLen = startStop[1] - startStop[0]; // last position is excluded
-                    totalLen += afsLen;
+                    int frLen = startStop[1] - startStop[0]; // last position is excluded
+                    totalLen += frLen;
                     bedOut.write(name // chrom
                             + "\t" + startStop[0] // chromStart (starts with 0)
                             + "\t" + startStop[1] // chromEnd
@@ -544,11 +542,15 @@ public class FindFRs {
                             + "\t" + 0 // thickstart
                             + "\t" + 0 // thickend
                             + "\t" + colors[maxFR % colors.length] // itemRGB
-                            + "\t" + afsLen // AFS length
+                            + "\t" + frLen // FR length
                             + "\n");
+                    
+                    // working here
                 }
+
+                distOut.write(frName + "," + top.size + "," + top.support + "," + (totalLen / supportingSegments.size()) + "\n");
+                
                 maxFR++;
-                distOut.write(afsname + "," + top.size + "," + top.support + "," + (totalLen / supportingSegments.size()) + "\n");
             }
             bedOut.close();
             distOut.close();
