@@ -506,6 +506,9 @@ public class FindFRs {
             BufferedWriter frOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frs.csv"));
             TreeMap<String, TreeMap<Integer, Integer>> seqFRcount = new TreeMap<String, TreeMap<Integer, Integer>>(); // yeast only
             HashMap<Integer, TreeSet<Integer>> nodeFRset = new HashMap<Integer, TreeSet<Integer>>();
+
+            TreeMap<String, TreeMap<Integer, String>> seqIndxFRstr
+                    = new TreeMap<String, TreeMap<Integer, String>>();
             while ((top = bestQ.poll()) != null) {
                 ConcurrentLinkedQueue<PathSegment> supportingSegments = findSupport(top);
                 String frName = "fr-" + maxFR;
@@ -544,12 +547,23 @@ public class FindFRs {
                             + "\t" + colors[maxFR % colors.length] // itemRGB
                             + "\t" + frLen // FR length
                             + "\n");
-                    
+
                     // working here
+                    if (!seqIndxFRstr.containsKey(name)) {
+                        seqIndxFRstr.put(name, new TreeMap<Integer, String>());
+                    }
+                    if (!seqIndxFRstr.get(name).containsKey(ps.start)) {
+                        seqIndxFRstr.get(name).put(ps.start, "");
+                    }
+                    if (!seqIndxFRstr.get(name).containsKey(ps.stop)) {
+                        seqIndxFRstr.get(name).put(ps.stop, "");
+                    }
+                    seqIndxFRstr.get(name).put(ps.start, " [fr-" + maxFR + ":" + startStop[0] + seqIndxFRstr.get(name).get(ps.start));
+                    seqIndxFRstr.get(name).put(ps.stop, seqIndxFRstr.get(name).get(ps.stop) + " fr-" + maxFR + ":" + startStop[1] + "] ");
                 }
 
                 distOut.write(frName + "," + top.size + "," + top.support + "," + (totalLen / supportingSegments.size()) + "\n");
-                
+
                 maxFR++;
             }
             bedOut.close();
@@ -558,28 +572,35 @@ public class FindFRs {
 
             BufferedWriter frPathsOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frpaths.csv"));
             for (int i = 0; i < paths.length; i++) {
-                frPathsOut.write(sequences.get(i).label + ",");
-                int lastFR = -1;
-                for (int j = 0; j < paths[i].length; j++) {
-                    if (nodeFRset.containsKey(paths[i][j])) {
-                        if (nodeFRset.get(paths[i][j]).first() != lastFR) {
-                            if (j > 0) {
-                                frPathsOut.write("-");
-                            }
-                            frPathsOut.write("" + nodeFRset.get(paths[i][j]).first());
-                            lastFR = nodeFRset.get(paths[i][j]).first();
-                        }
-                    } else {
-                        if (lastFR >= -1) {
-                            if (j > 0) {
-                                frPathsOut.write("-");
-                            }
-                            frPathsOut.write("*");
-                        }
-                        lastFR = -2;
+                String name = sequences.get(i).label;
+                if (seqIndxFRstr.containsKey(name)) {
+                    frPathsOut.write(name + ",");
+                    for (int pos : seqIndxFRstr.get(name).keySet()) {
+                        frPathsOut.write(seqIndxFRstr.get(name).get(pos));
                     }
+                    frPathsOut.write("\n");
                 }
-                frPathsOut.write("\n");
+//                int lastFR = -1;
+//                for (int j = 0; j < paths[i].length; j++) {
+//                    if (nodeFRset.containsKey(paths[i][j])) {
+//                        if (nodeFRset.get(paths[i][j]).first() != lastFR) {
+//                            if (j > 0) {
+//                                frPathsOut.write("-");
+//                            }
+//                            frPathsOut.write("" + nodeFRset.get(paths[i][j]).first());
+//                            lastFR = nodeFRset.get(paths[i][j]).first();
+//                        }
+//                    } else {
+//                        if (lastFR >= -1) {
+//                            if (j > 0) {
+//                                frPathsOut.write("-");
+//                            }
+//                            frPathsOut.write("*");
+//                        }
+//                        lastFR = -2;
+//                    }
+//                }
+
             }
             frPathsOut.close();
 
