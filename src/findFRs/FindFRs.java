@@ -551,7 +551,7 @@ public class FindFRs {
                     clearCPL(top);
                 }
                 String frName = "fr-" + maxFR;
-                HashSet<Integer> clustNodes = top.getNodeSet();
+                TreeSet<Integer> clustNodes = top.getNodeSet();
                 frOut.write(frName);
                 for (Integer n : clustNodes) {
                     frOut.write("," + n);

@@ -24,7 +24,14 @@ public class ClusterNode implements Comparable<ClusterNode> {
     ArrayList<ClusterEdge> edges;
 
     public int compareTo(ClusterNode other) {
-        return Integer.compare(other.support, support);
+        int result = Integer.compare(other.support, support);
+        if (result == 0) {
+            result = Integer.compare(size, other.size);
+        }
+        if (result == 0) {
+            result = Integer.compare(getNodeSet().first(), other.getNodeSet().first());
+        }
+        return result;
     }
 
     public boolean containsNode(int n) {
@@ -46,7 +53,7 @@ public class ClusterNode implements Comparable<ClusterNode> {
         }
     }
 
-    void addNodes(HashSet<Integer> ns) {
+    void addNodes(TreeSet<Integer> ns) {
         if (left == null && right == null) {
             ns.add(node);
         }
@@ -58,8 +65,8 @@ public class ClusterNode implements Comparable<ClusterNode> {
         }
     }
 
-    HashSet<Integer> getNodeSet() {
-        HashSet<Integer> ns = new HashSet<Integer>();
+    TreeSet<Integer> getNodeSet() {
+        TreeSet<Integer> ns = new TreeSet<Integer>();
         this.addNodes(ns);
 
         return ns;
