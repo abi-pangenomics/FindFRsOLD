@@ -26,7 +26,7 @@ public class ClusterNode implements Comparable<ClusterNode> {
     public int compareTo(ClusterNode other) {
         int result = Integer.compare(other.support, support);
         if (result == 0) {
-            result = Integer.compare(size, other.size);
+            result = Integer.compare(other.size, size);
         }
         if (result == 0) {
             result = Integer.compare(getNodeSet().first(), other.getNodeSet().first());
