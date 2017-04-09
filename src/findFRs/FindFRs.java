@@ -30,8 +30,8 @@ public class FindFRs {
     static int K = -1; // k-mer size
     static double alpha = 0.0; // epsilon_r parameter
     //static int maxInsert; // maxInsert parameter
-    static int minSup;
-    static int minSize;
+//    static int minSup;
+//    static int minSize;
     //static String filePrefix = ""; // file name prefix
 
     static String[] colors = {"122,39,25", "92,227,60", "225,70,233", "100,198,222", "232,176,49", "50,39,85",
@@ -249,6 +249,7 @@ public class FindFRs {
         } else {
             cPL = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
             clust.addLocs(cPL);
+            clust.pathLocs = cPL;
         }
         cPL.keySet().parallelStream().forEach((P) -> {
             TreeSet<Integer> locs = cPL.get(P);
@@ -395,12 +396,12 @@ public class FindFRs {
         }
 
         bestQ = new PriorityQueue<ClusterNode>();
-        System.out.println("cluster queue size: " + edgeQ.size());
+        System.out.println("edge queue size: " + edgeQ.size());
         ClusterEdge e;
         int count = 0;
         while ((e = edgeQ.poll()) != null) {
             //System.out.println("queue head: " + c.getNodeSet());
-            if (e.potentialSup > 0) {
+            if (e.potentialSup > 0 && e.u.parent == null && e.v.parent == null) {
                 finalizeEdge(e);
             }
             count++;
@@ -409,7 +410,7 @@ public class FindFRs {
             }
         }
 
-        System.out.println("finding roots");
+        System.out.println("finding root FRs");
         HashSet<ClusterNode> roots = new HashSet<ClusterNode>();
         for (ClusterNode leaf : nodeCluster.values()) {
             ClusterNode cur = leaf;
@@ -418,11 +419,11 @@ public class FindFRs {
             }
             roots.add(cur);
         }
-        System.out.println("number of roots: " + roots.size());
+        System.out.println("number of root FRs: " + roots.size());
         for (ClusterNode root : roots) {
             findBestSolns(root, 0);
         }
-        System.out.println("number of best solns: " + bestQ.size());
+        System.out.println("number of iFRs: " + bestQ.size());
 //        while ((c = bestQ.poll()) != null) {
 //            printCluster(c);
 //        }
@@ -430,13 +431,15 @@ public class FindFRs {
     }
 
     static void findBestSolns(ClusterNode clust, int parentSup) {
-        if (clust.support > parentSup && clust.support >= minSup && clust.size >= minSize) {
+        clust.edges.clear();
+        clust.edges = null;
+        if (clust.support > parentSup && clust.size >= 2 && clust.support >= 2) {
             bestQ.add(clust);
         }
-        if (clust.left != null && clust.left.size >= minSize) {
+        if (clust.left != null) {
             findBestSolns(clust.left, Math.max(parentSup, clust.support));
         }
-        if (clust.right != null && clust.right.size >= minSize) {
+        if (clust.right != null) {
             findBestSolns(clust.right, Math.max(parentSup, clust.support));
         }
     }
@@ -500,9 +503,22 @@ public class FindFRs {
 //        }
 //        return strain;
 //    }
+    static void clearCPL(ClusterNode clust) {
+        if (clust.pathLocs != null) {
+            clust.pathLocs.clear();
+        }
+        clust.pathLocs = null;
+        if (clust.left != null) {
+            clearCPL(clust.left);
+        }
+        if (clust.right != null) {
+            clearCPL(clust.right);
+        }
+    }
+
     static void outputResults() {
         try {
-            String paramString = "-k" + K + "-a" + alpha + "-sup" + minSup + "-size" + minSize;
+            String paramString = "-k" + K + "-a" + alpha;// + "-sup" + minSup + "-size" + minSize;
             String[] tmp = dotFile.split("/");
             String dotName = tmp[tmp.length - 1];
             tmp = fastaFile.split("/");
@@ -518,12 +534,12 @@ public class FindFRs {
 //            }
 //            nodePathsOut.close();
             BufferedWriter bedOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".bed"));
-            BufferedWriter distOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".dist.csv"));
+            BufferedWriter distOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".dist.txt"));
             distOut.write("FR,size,support,avg length\n");
             int maxFR = 0;
             ClusterNode top;
 
-            BufferedWriter frOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frs.csv"));
+            BufferedWriter frOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frs.txt"));
             TreeMap<String, TreeMap<Integer, Integer>> seqFRcount = new TreeMap<String, TreeMap<Integer, Integer>>(); // yeast only
             HashMap<Integer, TreeSet<Integer>> nodeFRset = new HashMap<Integer, TreeSet<Integer>>();
 
@@ -531,6 +547,9 @@ public class FindFRs {
                     = new TreeMap<String, TreeMap<Integer, String>>();
             while ((top = bestQ.poll()) != null) {
                 ConcurrentLinkedQueue<PathSegment> supportingSegments = findSupport(top);
+                if (top.parent == null) {
+                    clearCPL(top);
+                }
                 String frName = "fr-" + maxFR;
                 HashSet<Integer> clustNodes = top.getNodeSet();
                 frOut.write(frName);
@@ -568,7 +587,6 @@ public class FindFRs {
                             + "\t" + frLen // FR length
                             + "\n");
 
-                    // working here
                     if (!seqIndxFRstr.containsKey(name)) {
                         seqIndxFRstr.put(name, new TreeMap<Integer, String>());
                     }
@@ -590,7 +608,7 @@ public class FindFRs {
             distOut.close();
             frOut.close();
 
-            BufferedWriter frPathsOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frpaths.csv"));
+            BufferedWriter frPathsOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frpaths.txt"));
             for (int i = 0; i < paths.length; i++) {
                 String name = sequences.get(i).label;
                 if (seqIndxFRstr.containsKey(name)) {
@@ -624,19 +642,12 @@ public class FindFRs {
             }
             frPathsOut.close();
 
-            BufferedWriter seqFROut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".sfr.csv"));
-            for (int i = 0; i < maxFR; i++) {
-                seqFROut.write(",fr-" + i);
-            }
-            seqFROut.write("\n");
-            for (String strain : seqFRcount.keySet()) {
-                seqFROut.write(strain);
-                for (int fr = 0; fr < maxFR; fr++) {
-                    if (seqFRcount.get(strain).containsKey(fr)) {
-                        seqFROut.write("," + seqFRcount.get(strain).get(fr));
-                    } else {
-                        seqFROut.write("," + 0);
-                    }
+            System.out.println("writing csfr file");
+            BufferedWriter seqFROut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".csfr.txt"));
+            for (String seq : seqFRcount.keySet()) {
+                seqFROut.write(seq);
+                for (int fr : seqFRcount.get(seq).keySet()) {
+                    seqFROut.write("," + fr + ":" + seqFRcount.get(seq).get(fr));
                 }
                 seqFROut.write("\n");
             }
@@ -652,8 +663,8 @@ public class FindFRs {
 
     public static void main(String[] args) {
         // parse args:
-        if (args.length != 6) {
-            System.out.println("Usage: java findFRs dotFile faFile K alpha minSup minSize");
+        if (args.length != 4) {
+            System.out.println("Usage: java findFRs dotFile faFile K alpha");
             System.out.println(Arrays.toString(args));
             System.exit(0);
         }
@@ -661,8 +672,8 @@ public class FindFRs {
         fastaFile = args[1];
         K = Integer.parseInt(args[2]);
         alpha = Double.parseDouble(args[3]);
-        minSup = Integer.parseInt(args[4]);
-        minSize = Integer.parseInt(args[5]);
+//        minSup = Integer.parseInt(args[4]);
+//        minSize = Integer.parseInt(args[5]);
         //maxInsert = Integer.parseInt(args[2]);
 
         readData();
