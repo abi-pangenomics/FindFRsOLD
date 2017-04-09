@@ -19,11 +19,12 @@ public class ClusterNode implements Comparable<ClusterNode> {
     ConcurrentHashMap<Integer, TreeSet<Integer>> pathLocs;
     int size = 0;
     int support;
-    HashSet<ClusterNode> possibleParents;
-    boolean finalized = false;
+//    HashSet<ClusterNode> possibleParents;
+    //boolean finalized = false;
+    ArrayList<ClusterEdge> edges;
 
     public int compareTo(ClusterNode other) {
-        return Float.compare(other.support, support);
+        return Integer.compare(other.support, support);
     }
 
     public boolean containsNode(int n) {

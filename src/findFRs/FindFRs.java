@@ -18,7 +18,7 @@ public class FindFRs {
     static TreeMap<Integer, Integer> startToNode;
     static int[][] paths;
 
-    static PriorityQueue<ClusterNode> clusterQ;
+    static PriorityQueue<ClusterEdge> edgeQ;
     static PriorityQueue<ClusterNode> bestQ;
     static ClusterNode[] startNode;
 
@@ -243,8 +243,8 @@ public class FindFRs {
 
     static ConcurrentLinkedQueue<PathSegment> findSupport(ClusterNode clust) {
         ConcurrentLinkedQueue<PathSegment> segList = new ConcurrentLinkedQueue<PathSegment>();
-        Map<Integer, TreeSet<Integer>> cPL;
-        if (clust.node >= 0) {
+        ConcurrentHashMap<Integer, TreeSet<Integer>> cPL;
+        if (clust.pathLocs != null) {
             cPL = clust.pathLocs;
         } else {
             cPL = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
@@ -280,48 +280,66 @@ public class FindFRs {
         return segList;
     }
 
-    static void addToQueue(ClusterNode clust) {
-        clust.size = clust.left.size + clust.right.size;
-        computeSupport(clust, false);
-        if (clust.support >= 0.9 * minSup) {
-            clusterQ.add(clust);
+//    static void addToQueue(ClusterNode clust) {
+//        clust.size = clust.left.size + clust.right.size;
+//        computeSupport(clust, false);
+//        if (clust.support >= 0.9 * minSup) {
+//            edgeQ.add(clust);
+//        }
+//    }
+    static void finalizeEdge(ClusterEdge e) {
+        ClusterNode newRoot = new ClusterNode();
+        newRoot.left = e.u;
+        newRoot.right = e.v;
+        newRoot.parent = null;
+        newRoot.pathLocs = null;
+        newRoot.edges = new ArrayList<ClusterEdge>();
+        newRoot.size = newRoot.left.size + newRoot.right.size;
+        computeSupport(newRoot, true);
+        if (newRoot.left.pathLocs != null && newRoot.left.node == -1) {
+            newRoot.left.pathLocs.clear();
+            newRoot.left.pathLocs = null;
         }
-    }
+        newRoot.left.parent = newRoot;
+        if (newRoot.right.pathLocs != null && newRoot.right.node == -1) {
+            newRoot.right.pathLocs.clear();
+            newRoot.right.pathLocs = null;
+        }
+        newRoot.right.parent = newRoot;
+        //newRoot.finalized = true;
 
-    static void finalizeCluster(ClusterNode clust) {
-        //System.out.println("finalizing cluster:" + clust.getNodeSet());
-        clust.finalized = true;
-        clust.left.parent = clust;
-        clust.right.parent = clust;
-        computeSupport(clust, true);
-        if (clust.left.node == -1) {
-            clust.left.pathLocs.clear();
-            clust.left.pathLocs = null;
-        }
-        if (clust.right.node == -1) {
-            clust.right.pathLocs.clear();
-            clust.right.pathLocs = null;
-        }
-        HashSet<ClusterNode> pp = new HashSet<ClusterNode>();
-        pp.addAll(clust.left.possibleParents);
-        pp.addAll(clust.right.possibleParents);
-        for (ClusterNode n : pp) {
-            if (!n.finalized) {
-                clust.possibleParents.add(n);
-                if (n.left == clust.left || n.left == clust.right) {
-                    n.left = clust;
-                }
-                if (n.right == clust.left || n.right == clust.right) {
-                    n.right = clust;
-                }
-                clusterQ.remove(n);
-                if (n.left != n.right) {
-                    addToQueue(n);
-                }
+        TreeSet<ClusterNode> neighbors = new TreeSet<ClusterNode>();
+        for (int i = 0; i < e.u.edges.size(); i++) {
+            ClusterEdge ce = e.u.edges.get(i);
+            ClusterNode n = ce.other(e.v);
+            if (n != e.v) {
+                neighbors.add(n);
             }
+            edgeQ.remove(ce);
+            n.edges.remove(ce);
         }
-        clust.left.possibleParents.clear();
-        clust.right.possibleParents.clear();
+        for (int i = 0; i < e.v.edges.size(); i++) {
+            ClusterEdge ce = e.v.edges.get(i);
+            ClusterNode n = ce.other(e.v);
+            if (n != e.u) {
+                neighbors.add(n);
+            }
+            edgeQ.remove(ce);
+            n.edges.remove(ce);
+        }
+        for (ClusterNode n : neighbors) {
+            ClusterNode tmpClst = new ClusterNode();
+            tmpClst.left = newRoot;
+            tmpClst.right = n;
+            tmpClst.parent = null;
+            tmpClst.pathLocs = null;
+            tmpClst.size = tmpClst.left.size + tmpClst.right.size;
+            computeSupport(tmpClst, false);
+            ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.support);
+            newRoot.edges.add(newE);
+            n.edges.add(newE);
+            edgeQ.add(newE);
+        }
     }
 
     static void exploreSolns() {
@@ -330,58 +348,60 @@ public class FindFRs {
 
         // create initial node clusters
         g.nodePaths.keySet().parallelStream().forEach((N) -> {
-            ClusterNode newCluster = new ClusterNode();
-            newCluster.parent = newCluster.left = newCluster.right = null;
-            newCluster.node = N;
-            newCluster.size = 1;
-            newCluster.possibleParents = new HashSet<ClusterNode>();
-            newCluster.pathLocs = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
+            ClusterNode nodeClst = new ClusterNode();
+            nodeClst.parent = nodeClst.left = nodeClst.right = null;
+            nodeClst.node = N;
+            nodeClst.size = 1;
+            nodeClst.pathLocs = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
+            nodeClst.edges = new ArrayList<ClusterEdge>();
             for (Integer P : g.nodePaths.get(N)) {
                 for (int pn = 0; pn < paths[P].length; pn++) {
                     if (paths[P][pn] == N) {
-                        if (!newCluster.pathLocs.containsKey(P)) {
-                            newCluster.pathLocs.put(P, new TreeSet<Integer>());
+                        if (!nodeClst.pathLocs.containsKey(P)) {
+                            nodeClst.pathLocs.put(P, new TreeSet<Integer>());
                         }
-                        newCluster.pathLocs.get(P).add(pn);
+                        nodeClst.pathLocs.get(P).add(pn);
                     }
                 }
             }
-            nodeCluster.put(N, newCluster);
+            nodeCluster.put(N, nodeClst);
         });
         g.nodePaths.clear(); //not used after this
         g.nodePaths = null;
         System.out.println("computing node support");
         for (ClusterNode c : nodeCluster.values()) {
             computeSupport(c, false);
-            c.finalized = true;
+            //c.finalized = true;
         }
         // create initial edges
-        clusterQ = new PriorityQueue<ClusterNode>();
-        System.out.println("creating edge clusters");
+        edgeQ = new PriorityQueue<ClusterEdge>();
+        System.out.println("adding edges");
         for (Integer N : nodeCluster.keySet()) {
             for (int i = 0; i < g.neighbor[N].length; i++) {
                 if (nodeCluster.containsKey(g.neighbor[N][i])) {
-                    ClusterNode tentativeCluster = new ClusterNode();
-                    tentativeCluster.left = nodeCluster.get(N);
-                    tentativeCluster.right = nodeCluster.get(g.neighbor[N][i]);
-                    tentativeCluster.parent = null;
-                    tentativeCluster.pathLocs = null;
-                    tentativeCluster.left.possibleParents.add(tentativeCluster);
-                    tentativeCluster.right.possibleParents.add(tentativeCluster);
-                    tentativeCluster.possibleParents = new HashSet<ClusterNode>();
-                    addToQueue(tentativeCluster);
+                    ClusterNode tmpClst = new ClusterNode();
+                    tmpClst.left = nodeCluster.get(N);
+                    tmpClst.right = nodeCluster.get(g.neighbor[N][i]);
+                    tmpClst.parent = null;
+                    tmpClst.pathLocs = null;
+                    tmpClst.size = 2;
+                    computeSupport(tmpClst, false);
+                    ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.support);
+                    tmpClst.left.edges.add(newE);
+                    tmpClst.right.edges.add(newE);
+                    edgeQ.add(newE);
                 }
             }
         }
 
         bestQ = new PriorityQueue<ClusterNode>();
-        System.out.println("cluster queue size: " + clusterQ.size());
-        ClusterNode c;
+        System.out.println("cluster queue size: " + edgeQ.size());
+        ClusterEdge e;
         int count = 0;
-        while ((c = clusterQ.poll()) != null) {
+        while ((e = edgeQ.poll()) != null) {
             //System.out.println("queue head: " + c.getNodeSet());
-            if (c.support > 0) {
-                finalizeCluster(c);
+            if (e.potentialSup > 0) {
+                finalizeEdge(e);
             }
             count++;
             if (count % 1000 == 0) {
