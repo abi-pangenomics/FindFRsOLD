@@ -350,6 +350,7 @@ public class FindFRs {
         // create initial node clusters
         g.nodePaths.keySet().parallelStream().forEach((N) -> {
             ClusterNode nodeClst = new ClusterNode();
+            //System.out.println("creating cluster node: " + N);
             nodeClst.parent = nodeClst.left = nodeClst.right = null;
             nodeClst.node = N;
             nodeClst.size = 1;
@@ -371,6 +372,7 @@ public class FindFRs {
         g.nodePaths = null;
         System.out.println("computing node support");
         for (ClusterNode c : nodeCluster.values()) {
+            System.out.println("computing support for cluster node: " + c.node);
             computeSupport(c, false);
             //c.finalized = true;
         }
@@ -550,6 +552,7 @@ public class FindFRs {
                 if (top.parent == null) {
                     clearCPL(top);
                 }
+                if (maxFR == 15432) System.out.println("here");
                 String frName = "fr-" + maxFR;
                 TreeSet<Integer> clustNodes = top.getNodeSet();
                 frOut.write(frName);
