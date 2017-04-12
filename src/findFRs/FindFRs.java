@@ -208,11 +208,11 @@ public class FindFRs {
     }
 
     static ConcurrentLinkedQueue<PathSegment> computeSupport(ClusterNode clust, boolean createPSList) {
-        ConcurrentLinkedQueue<PathSegment> segList = new ConcurrentLinkedQueue<PathSegment>();
-        AtomicInteger clustSupport = new AtomicInteger(0);
         if (clust.pathLocs == null) {
             clust.findPathLocs();
         }
+        ConcurrentLinkedQueue<PathSegment> segList = new ConcurrentLinkedQueue<PathSegment>();
+        AtomicInteger clustSupport = new AtomicInteger(0);
         clust.pathLocs.keySet().parallelStream().forEach((P) -> {
             int[] locs = clust.pathLocs.get(P);
             int start = 0;
