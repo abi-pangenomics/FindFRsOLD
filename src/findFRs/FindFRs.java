@@ -30,8 +30,8 @@ public class FindFRs {
     static int K = -1; // k-mer size
     static double alpha = 0.0; // epsilon_r parameter
     //static int maxInsert; // maxInsert parameter
-//    static int minSup;
-//    static int minSize;
+    static int minSup;
+    static int minSize;
     //static String filePrefix = ""; // file name prefix
 
     static String[] colors = {"122,39,25", "92,227,60", "225,70,233", "100,198,222", "232,176,49", "50,39,85",
@@ -291,17 +291,18 @@ public class FindFRs {
         newRoot.pathLocs = null;
         newRoot.edges = new ArrayList<ClusterEdge>();
         newRoot.size = newRoot.left.size + newRoot.right.size;
-        computeSupport(newRoot, false);
-        if (newRoot.left.pathLocs != null && newRoot.left.node == -1) {
-            newRoot.left.pathLocs.clear();
-            newRoot.left.pathLocs = null;
-        }
+
         newRoot.left.parent = newRoot;
-        if (newRoot.right.pathLocs != null) {
-            newRoot.right.pathLocs.clear();
-            newRoot.right.pathLocs = null;
-        }
         newRoot.right.parent = newRoot;
+        computeSupport(newRoot, false);
+//        if (newRoot.left.pathLocs != null && newRoot.left.node == -1) {
+//            newRoot.left.pathLocs.clear();
+//            newRoot.left.pathLocs = null;
+//        }
+//        if (newRoot.right.pathLocs != null && newRoot.right.node == -1) {
+//            newRoot.right.pathLocs.clear();
+//            newRoot.right.pathLocs = null;
+//        }
 
         TreeSet<ClusterNode> neighbors = new TreeSet<ClusterNode>();
         for (int i = 0; i < e.u.edges.size(); i++) {
@@ -447,7 +448,7 @@ public class FindFRs {
     static void findBestSolns(ClusterNode clust, int parentSup) {
         clust.edges.clear();
         clust.edges = null;
-        if (clust.support > parentSup && clust.size >= 2 && clust.support >= 2) {
+        if (clust.support > parentSup && clust.size >= minSize && clust.support >= minSup) {
             bestQ.add(clust);
         }
         if (clust.left != null) {
@@ -540,7 +541,7 @@ public class FindFRs {
         }
 
         try {
-            String paramString = "-k" + K + "-a" + alpha;// + "-sup" + minSup + "-size" + minSize;
+            String paramString = "-k" + K + "-a" + alpha + "-sup" + minSup + "-size" + minSize;
             String[] tmp = dotFile.split("/");
             String dotName = tmp[tmp.length - 1];
             tmp = fastaFile.split("/");
@@ -571,15 +572,18 @@ public class FindFRs {
             System.out.println("writing bed file");
             BufferedWriter bedOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".bed"));
             TreeMap<String, TreeMap<Integer, Integer>> seqFRcount = new TreeMap<String, TreeMap<Integer, Integer>>();
-            TreeMap<String, TreeMap<Integer, String>> seqIndxFRstr = new TreeMap<String, TreeMap<Integer, String>>();
+            TreeMap<String, TreeMap<Integer, LinkedList<String>>> seqIndxFRstr = new TreeMap<String, TreeMap<Integer, LinkedList<String>>>();
             TreeMap<Integer, Integer> frAvgLen = new TreeMap<Integer, Integer>();
             for (int fr = 0; fr < iFRs.size(); fr++) {
                 ClusterNode iFR = iFRs.get(fr);
-                System.out.println("writing fr-" + fr);
-                ConcurrentLinkedQueue<PathSegment> supportingSegments = computeSupport(iFR, true);
-                if (iFR.parent == null) {
-                    clearCPL(iFR);
+                if ((fr % 100) == 0) {
+                    System.out.println("writing fr-" + fr);
                 }
+                ConcurrentLinkedQueue<PathSegment> supportingSegments = computeSupport(iFR, true);
+                //System.out.println("finished computing support");
+//                if (iFR.parent == null) {
+//                    clearCPL(iFR);
+//                }
                 frAvgLen.put(fr, 0);
                 for (PathSegment ps : supportingSegments) {
                     String name = sequences.get(ps.path).label;
@@ -593,6 +597,7 @@ public class FindFRs {
                     int[] startStop = findFastaLoc(ps);
                     int frLen = startStop[1] - startStop[0]; // last position is excluded
                     frAvgLen.put(fr, frLen + frAvgLen.get(fr));
+
                     bedOut.write(name // chrom
                             + "\t" + startStop[0] // chromStart (starts with 0)
                             + "\t" + startStop[1] // chromEnd
@@ -605,21 +610,22 @@ public class FindFRs {
                             + "\t" + frLen // FR length
                             + "\n");
                     if (!seqIndxFRstr.containsKey(name)) {
-                        seqIndxFRstr.put(name, new TreeMap<Integer, String>());
+                        seqIndxFRstr.put(name, new TreeMap<Integer, LinkedList<String>>());
                     }
                     if (!seqIndxFRstr.get(name).containsKey(ps.start)) {
-                        seqIndxFRstr.get(name).put(ps.start, "");
+                        seqIndxFRstr.get(name).put(ps.start, new LinkedList<String>());
                     }
                     if (!seqIndxFRstr.get(name).containsKey(ps.stop)) {
-                        seqIndxFRstr.get(name).put(ps.stop, "");
+                        seqIndxFRstr.get(name).put(ps.stop, new LinkedList<String>());
                     }
-                    seqIndxFRstr.get(name).put(ps.start, " [fr-" + fr + ":" + startStop[0] + seqIndxFRstr.get(name).get(ps.start));
-                    seqIndxFRstr.get(name).put(ps.stop, seqIndxFRstr.get(name).get(ps.stop) + " fr-" + fr + ":" + startStop[1] + "] ");
+                    seqIndxFRstr.get(name).get(ps.start).addFirst(" [fr-" + fr + ":" + startStop[0]);
+                    seqIndxFRstr.get(name).get(ps.stop).addLast(" fr-" + fr + ":" + startStop[1] + "] ");
                 }
-                frAvgLen.put(fr, frAvgLen.get(fr) / supportingSegments.size());
+                frAvgLen.put(fr, frAvgLen.get(fr) / iFR.support);
             }
             bedOut.close();
 
+            System.out.println("writing dist file");
             BufferedWriter distOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".dist.txt"));
             distOut.write("FR,size,support,avg length\n");
             for (int fr = 0; fr < iFRs.size(); fr++) {
@@ -628,13 +634,17 @@ public class FindFRs {
             }
             distOut.close();
 
+            System.out.println("writing frpaths file");
             BufferedWriter frPathsOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frpaths.txt"));
             for (int i = 0; i < paths.length; i++) {
                 String name = sequences.get(i).label;
                 if (seqIndxFRstr.containsKey(name)) {
                     frPathsOut.write(name + ",");
                     for (int pos : seqIndxFRstr.get(name).keySet()) {
-                        frPathsOut.write(seqIndxFRstr.get(name).get(pos));
+                        LinkedList<String> ll = seqIndxFRstr.get(name).get(pos);
+                        for (String s : ll) {
+                            frPathsOut.write(s);
+                        }
                     }
                     frPathsOut.write("\n");
                 }
@@ -662,8 +672,8 @@ public class FindFRs {
 
     public static void main(String[] args) {
         // parse args:
-        if (args.length != 4) {
-            System.out.println("Usage: java findFRs dotFile faFile K alpha");
+        if (args.length != 6) {
+            System.out.println("Usage: java findFRs dotFile faFile K alpha minsup minsize");
             System.out.println(Arrays.toString(args));
             System.exit(0);
         }
@@ -671,8 +681,8 @@ public class FindFRs {
         fastaFile = args[1];
         K = Integer.parseInt(args[2]);
         alpha = Double.parseDouble(args[3]);
-//        minSup = Integer.parseInt(args[4]);
-//        minSize = Integer.parseInt(args[5]);
+        minSup = Integer.parseInt(args[4]);
+        minSize = Integer.parseInt(args[5]);
         //maxInsert = Integer.parseInt(args[2]);
 
         readData();
