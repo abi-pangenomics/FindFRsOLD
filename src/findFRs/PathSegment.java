@@ -13,4 +13,10 @@ public class PathSegment {
     int path;
     int start;
     int stop;
+    
+    public PathSegment(int path, int start, int stop) {
+        this.path = path;
+        this.start = start;
+        this.stop = stop;
+    }
 }

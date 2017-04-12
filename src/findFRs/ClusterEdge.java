@@ -31,6 +31,9 @@ public class ClusterEdge implements Comparable<ClusterEdge> {
     public int compareTo(ClusterEdge other) {
         int result = Integer.compare(other.potentialSup, potentialSup);
         if (result == 0) {
+            result = Integer.compare(Math.abs(u.size-v.size), Math.abs(other.u.size - other.v.size));
+        }
+        if (result == 0) {
             result = u.compareTo(other.u);
         }
         return result;

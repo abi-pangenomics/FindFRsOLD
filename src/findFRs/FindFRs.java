@@ -207,80 +207,75 @@ public class FindFRs {
         return Math.max(0, curEndLoc - g.length[path[start]] - g.length[path[stop]]);
     }
 
-    static void computeSupport(ClusterNode clust, boolean savePL) {
-        ConcurrentHashMap<Integer, TreeSet<Integer>> cPL;
-        if (clust.pathLocs != null) {
-            cPL = clust.pathLocs;
-        } else {
-            cPL = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
-            clust.addLocs(cPL);
-        }
+    static ConcurrentLinkedQueue<PathSegment> computeSupport(ClusterNode clust, boolean createPSList) {
+        ConcurrentLinkedQueue<PathSegment> segList = new ConcurrentLinkedQueue<PathSegment>();
         AtomicInteger clustSupport = new AtomicInteger(0);
-        cPL.keySet().parallelStream().forEach((P) -> {
-            TreeSet<Integer> locs = cPL.get(P);
-            Iterator<Integer> iter = locs.iterator();
-            Integer start = iter.next();
-            Integer last = start;
-            while (iter.hasNext()) {
-                Integer next = iter.next();
-                if (next > last + 1) {
-                    if (last - start + 1 >= alpha * clust.size) {
-                        clustSupport.incrementAndGet();
-                    }
-                    start = next;
+        if (clust.pathLocs == null) {
+            clust.findPathLocs();
+        }
+        clust.pathLocs.keySet().parallelStream().forEach((P) -> {
+            int[] locs = clust.pathLocs.get(P);
+            int start = 0;
+            while (start < locs.length) {
+                int last = start;
+                while (last + 1 < locs.length && locs[last + 1] == locs[last] + 1) {
+                    last++;
                 }
-                last = next;
-            }
-            if (last - start + 1 >= alpha * clust.size) {
-                clustSupport.incrementAndGet();
+                if (locs[last] - locs[start] + 1 >= alpha * clust.size) {
+                    clustSupport.incrementAndGet();
+                    if (createPSList) {
+                        segList.add(new PathSegment(P, locs[start], locs[last]));
+                    }
+                }
+                start = last + 1;
             }
         });
         clust.support = clustSupport.get();
-        if (savePL) {
-            clust.pathLocs = cPL;
+        if (createPSList) {
+            return segList;
         }
+        return null;
     }
 
-    static ConcurrentLinkedQueue<PathSegment> findSupport(ClusterNode clust) {
-        ConcurrentLinkedQueue<PathSegment> segList = new ConcurrentLinkedQueue<PathSegment>();
-        ConcurrentHashMap<Integer, TreeSet<Integer>> cPL;
-        if (clust.pathLocs != null) {
-            cPL = clust.pathLocs;
-        } else {
-            cPL = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
-            clust.addLocs(cPL);
-            clust.pathLocs = cPL;
-        }
-        cPL.keySet().parallelStream().forEach((P) -> {
-            TreeSet<Integer> locs = cPL.get(P);
-            Iterator<Integer> iter = locs.iterator();
-            Integer start = iter.next();
-            Integer last = start;
-            while (iter.hasNext()) {
-                Integer next = iter.next();
-                if (next > last + 1) {
-                    if (last - start + 1 >= alpha * clust.size) {
-                        PathSegment ps = new PathSegment();
-                        ps.path = P;
-                        ps.start = start;
-                        ps.stop = last;
-                        segList.add(ps);
-                    }
-                    start = next;
-                }
-                last = next;
-            }
-            if (last - start + 1 >= alpha * clust.size) {
-                PathSegment ps = new PathSegment();
-                ps.path = P;
-                ps.start = start;
-                ps.stop = last;
-                segList.add(ps);
-            }
-        });
-        return segList;
-    }
-
+//    static ConcurrentLinkedQueue<PathSegment> findSupport(ClusterNode clust) {
+//        ConcurrentLinkedQueue<PathSegment> segList = new ConcurrentLinkedQueue<PathSegment>();
+//        ConcurrentHashMap<Integer, TreeSet<Integer>> cPL;
+//        if (clust.pathLocs != null) {
+//            cPL = clust.pathLocs;
+//        } else {
+//            cPL = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
+//            clust.addLocs(cPL);
+//            clust.pathLocs = cPL;
+//        }
+//        cPL.keySet().parallelStream().forEach((P) -> {
+//            TreeSet<Integer> locs = cPL.get(P);
+//            Iterator<Integer> iter = locs.iterator();
+//            Integer start = iter.next();
+//            Integer last = start;
+//            while (iter.hasNext()) {
+//                Integer next = iter.next();
+//                if (next > last + 1) {
+//                    if (last - start + 1 >= alpha * clust.size) {
+//                        PathSegment ps = new PathSegment();
+//                        ps.path = P;
+//                        ps.start = start;
+//                        ps.stop = last;
+//                        segList.add(ps);
+//                    }
+//                    start = next;
+//                }
+//                last = next;
+//            }
+//            if (last - start + 1 >= alpha * clust.size) {
+//                PathSegment ps = new PathSegment();
+//                ps.path = P;
+//                ps.start = start;
+//                ps.stop = last;
+//                segList.add(ps);
+//            }
+//        });
+//        return segList;
+//    }
 //    static void addToQueue(ClusterNode clust) {
 //        clust.size = clust.left.size + clust.right.size;
 //        computeSupport(clust, false);
@@ -296,24 +291,23 @@ public class FindFRs {
         newRoot.pathLocs = null;
         newRoot.edges = new ArrayList<ClusterEdge>();
         newRoot.size = newRoot.left.size + newRoot.right.size;
-        computeSupport(newRoot, true);
+        computeSupport(newRoot, false);
         if (newRoot.left.pathLocs != null && newRoot.left.node == -1) {
             newRoot.left.pathLocs.clear();
             newRoot.left.pathLocs = null;
         }
         newRoot.left.parent = newRoot;
-        if (newRoot.right.pathLocs != null && newRoot.right.node == -1) {
+        if (newRoot.right.pathLocs != null) {
             newRoot.right.pathLocs.clear();
             newRoot.right.pathLocs = null;
         }
         newRoot.right.parent = newRoot;
-        //newRoot.finalized = true;
 
         TreeSet<ClusterNode> neighbors = new TreeSet<ClusterNode>();
         for (int i = 0; i < e.u.edges.size(); i++) {
             ClusterEdge ce = e.u.edges.get(i);
-            ClusterNode n = ce.other(e.v);
-            if (n != e.v) {
+            ClusterNode n = ce.other(e.u);
+            if (n != e.v && n.parent == null) {
                 neighbors.add(n);
             }
             edgeQ.remove(ce);
@@ -322,7 +316,7 @@ public class FindFRs {
         for (int i = 0; i < e.v.edges.size(); i++) {
             ClusterEdge ce = e.v.edges.get(i);
             ClusterNode n = ce.other(e.v);
-            if (n != e.u) {
+            if (n != e.u && n.parent == null) {
                 neighbors.add(n);
             }
             edgeQ.remove(ce);
@@ -333,9 +327,9 @@ public class FindFRs {
             tmpClst.left = newRoot;
             tmpClst.right = n;
             tmpClst.parent = null;
-            tmpClst.pathLocs = null;
             tmpClst.size = tmpClst.left.size + tmpClst.right.size;
             computeSupport(tmpClst, false);
+            tmpClst.pathLocs.clear();
             ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.support);
             newRoot.edges.add(newE);
             n.edges.add(newE);
@@ -354,27 +348,45 @@ public class FindFRs {
             nodeClst.parent = nodeClst.left = nodeClst.right = null;
             nodeClst.node = N;
             nodeClst.size = 1;
-            nodeClst.pathLocs = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
+            nodeClst.pathLocs = new ConcurrentHashMap<Integer, int[]>();
             nodeClst.edges = new ArrayList<ClusterEdge>();
-            for (Integer P : g.nodePaths.get(N)) {
-                for (int pn = 0; pn < paths[P].length; pn++) {
-                    if (paths[P][pn] == N) {
-                        if (!nodeClst.pathLocs.containsKey(P)) {
-                            nodeClst.pathLocs.put(P, new TreeSet<Integer>());
-                        }
-                        nodeClst.pathLocs.get(P).add(pn);
-                    }
-                }
-            }
             nodeCluster.put(N, nodeClst);
         });
         g.nodePaths.clear(); //not used after this
         g.nodePaths = null;
+        TreeMap<Integer, TreeMap<Integer, ArrayList<Integer>>> nodePathLocs
+                = new TreeMap<Integer, TreeMap<Integer, ArrayList<Integer>>>();
+        for (int p = 0; p < paths.length; p++) {
+            for (int i = 0; i < paths[p].length; i++) {
+                int n = paths[p][i];
+                if (!nodePathLocs.containsKey(n)) {
+                    nodePathLocs.put(n, new TreeMap<Integer, ArrayList<Integer>>());
+                }
+                if (!nodePathLocs.get(n).containsKey(p)) {
+                    nodePathLocs.get(n).put(p, new ArrayList<Integer>());
+                }
+                nodePathLocs.get(n).get(p).add(i);
+            }
+        }
+        for (Integer node : nodePathLocs.keySet()) {
+            nodePathLocs.get(node).keySet().parallelStream().forEach((P) -> {
+                ArrayList<Integer> al = nodePathLocs.get(node).get(P);
+                int[] ar = new int[al.size()];
+                int i = 0;
+                for (Integer x : al) {
+                    ar[i++] = x;
+                }
+                if (nodeCluster.containsKey(node)) {
+                    nodeCluster.get(node).pathLocs.put(P, ar);
+                }
+            });
+        }
+        nodePathLocs.clear();
+
         System.out.println("computing node support");
         for (ClusterNode c : nodeCluster.values()) {
-            System.out.println("computing support for cluster node: " + c.node);
+            //System.out.println("computing support for cluster node: " + c.node);
             computeSupport(c, false);
-            //c.finalized = true;
         }
         // create initial edges
         edgeQ = new PriorityQueue<ClusterEdge>();
@@ -386,9 +398,9 @@ public class FindFRs {
                     tmpClst.left = nodeCluster.get(N);
                     tmpClst.right = nodeCluster.get(g.neighbor[N][i]);
                     tmpClst.parent = null;
-                    tmpClst.pathLocs = null;
                     tmpClst.size = 2;
                     computeSupport(tmpClst, false);
+                    tmpClst.pathLocs.clear();
                     ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.support);
                     tmpClst.left.edges.add(newE);
                     tmpClst.right.edges.add(newE);
@@ -506,10 +518,12 @@ public class FindFRs {
 //        return strain;
 //    }
     static void clearCPL(ClusterNode clust) {
-        if (clust.pathLocs != null) {
-            clust.pathLocs.clear();
+        if (clust.node == -1) {
+            if (clust.pathLocs != null) {
+                clust.pathLocs.clear();
+            }
+            clust.pathLocs = null;
         }
-        clust.pathLocs = null;
         if (clust.left != null) {
             clearCPL(clust.left);
         }
@@ -519,6 +533,12 @@ public class FindFRs {
     }
 
     static void outputResults() {
+        ClusterNode top;
+        ArrayList<ClusterNode> iFRs = new ArrayList<ClusterNode>();
+        while ((top = bestQ.poll()) != null) {
+            iFRs.add(top);
+        }
+
         try {
             String paramString = "-k" + K + "-a" + alpha;// + "-sup" + minSup + "-size" + minSize;
             String[] tmp = dotFile.split("/");
@@ -530,66 +550,61 @@ public class FindFRs {
             File resultsDir = new File(rd);
             resultsDir.mkdir();
 
-//            BufferedWriter nodePathsOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".nodepaths"));
-//            for (int i = 0; i < paths.length; i++) {
-//                nodePathsOut.write(sequences.get(i).label + " " + Arrays.toString(paths[i]) + "\n");
-//            }
-//            nodePathsOut.close();
-            BufferedWriter bedOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".bed"));
-            BufferedWriter distOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".dist.txt"));
-            distOut.write("FR,size,support,avg length\n");
-            int maxFR = 0;
-            ClusterNode top;
-
-            BufferedWriter frOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frs.txt"));
-            TreeMap<String, TreeMap<Integer, Integer>> seqFRcount = new TreeMap<String, TreeMap<Integer, Integer>>(); // yeast only
+            int fr = 0;
             HashMap<Integer, TreeSet<Integer>> nodeFRset = new HashMap<Integer, TreeSet<Integer>>();
-
-            TreeMap<String, TreeMap<Integer, String>> seqIndxFRstr
-                    = new TreeMap<String, TreeMap<Integer, String>>();
-            while ((top = bestQ.poll()) != null) {
-                ConcurrentLinkedQueue<PathSegment> supportingSegments = findSupport(top);
-                if (top.parent == null) {
-                    clearCPL(top);
-                }
-                if (maxFR == 15432) System.out.println("here");
-                String frName = "fr-" + maxFR;
-                TreeSet<Integer> clustNodes = top.getNodeSet();
+            BufferedWriter frOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frs.txt"));
+            for (ClusterNode iFR : iFRs) {
+                String frName = "fr-" + fr;
+                TreeSet<Integer> clustNodes = iFR.getNodeSet();
                 frOut.write(frName);
                 for (Integer n : clustNodes) {
                     frOut.write("," + n);
                     if (!nodeFRset.containsKey(n)) {
                         nodeFRset.put(n, new TreeSet<Integer>());
                     }
-                    nodeFRset.get(n).add(maxFR);
+                    nodeFRset.get(n).add(fr);
                 }
                 frOut.write("\n");
-                int totalLen = 0;
+                fr++;
+            }
+            frOut.close();
+
+            System.out.println("writing bed file");
+            BufferedWriter bedOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".bed"));
+            TreeMap<String, TreeMap<Integer, Integer>> seqFRcount = new TreeMap<String, TreeMap<Integer, Integer>>();
+            TreeMap<String, TreeMap<Integer, String>> seqIndxFRstr = new TreeMap<String, TreeMap<Integer, String>>();
+            TreeMap<Integer, Integer> frAvgLen = new TreeMap<Integer, Integer>();
+            fr = 0;
+            for (ClusterNode iFR : iFRs) {
+                System.out.println("writing fr-" + fr);
+                ConcurrentLinkedQueue<PathSegment> supportingSegments = computeSupport(iFR, true);
+                if (iFR.parent == null) {
+                    clearCPL(iFR);
+                }
+                frAvgLen.put(fr, 0);
                 for (PathSegment ps : supportingSegments) {
                     String name = sequences.get(ps.path).label;
-
                     if (!seqFRcount.containsKey(name)) {
                         seqFRcount.put(name, new TreeMap<Integer, Integer>());
                     }
-                    if (!seqFRcount.get(name).containsKey(maxFR)) {
-                        seqFRcount.get(name).put(maxFR, 0);
+                    if (!seqFRcount.get(name).containsKey(fr)) {
+                        seqFRcount.get(name).put(fr, 0);
                     }
-                    seqFRcount.get(name).put(maxFR, seqFRcount.get(name).get(maxFR) + 1);
+                    seqFRcount.get(name).put(fr, seqFRcount.get(name).get(fr) + 1);
                     int[] startStop = findFastaLoc(ps);
                     int frLen = startStop[1] - startStop[0]; // last position is excluded
-                    totalLen += frLen;
+                    frAvgLen.put(fr, frLen + frAvgLen.get(fr));
                     bedOut.write(name // chrom
                             + "\t" + startStop[0] // chromStart (starts with 0)
                             + "\t" + startStop[1] // chromEnd
-                            + "\t" + "fr-" + maxFR// name
-                            + "\t" + Math.round(top.support) // score
+                            + "\t" + "fr-" + fr// name
+                            + "\t" + Math.round(iFR.support) // score
                             + "\t+" // strand
                             + "\t" + 0 // thickstart
                             + "\t" + 0 // thickend
-                            + "\t" + colors[maxFR % colors.length] // itemRGB
+                            + "\t" + colors[fr % colors.length] // itemRGB
                             + "\t" + frLen // FR length
                             + "\n");
-
                     if (!seqIndxFRstr.containsKey(name)) {
                         seqIndxFRstr.put(name, new TreeMap<Integer, String>());
                     }
@@ -599,17 +614,22 @@ public class FindFRs {
                     if (!seqIndxFRstr.get(name).containsKey(ps.stop)) {
                         seqIndxFRstr.get(name).put(ps.stop, "");
                     }
-                    seqIndxFRstr.get(name).put(ps.start, " [fr-" + maxFR + ":" + startStop[0] + seqIndxFRstr.get(name).get(ps.start));
-                    seqIndxFRstr.get(name).put(ps.stop, seqIndxFRstr.get(name).get(ps.stop) + " fr-" + maxFR + ":" + startStop[1] + "] ");
+                    seqIndxFRstr.get(name).put(ps.start, " [fr-" + fr + ":" + startStop[0] + seqIndxFRstr.get(name).get(ps.start));
+                    seqIndxFRstr.get(name).put(ps.stop, seqIndxFRstr.get(name).get(ps.stop) + " fr-" + fr + ":" + startStop[1] + "] ");
                 }
-
-                distOut.write(frName + "," + top.size + "," + top.support + "," + (totalLen / supportingSegments.size()) + "\n");
-
-                maxFR++;
+                frAvgLen.put(fr, frAvgLen.get(fr) / supportingSegments.size());
+                fr++;
             }
             bedOut.close();
+
+            BufferedWriter distOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".dist.txt"));
+            distOut.write("FR,size,support,avg length\n");
+            fr = 0;
+            for (ClusterNode iFR : iFRs) {
+                distOut.write("fr-" + fr + "," + iFR.size + "," + iFR.support + "," + frAvgLen.get(fr) + "\n");
+                fr++;
+            }
             distOut.close();
-            frOut.close();
 
             BufferedWriter frPathsOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frpaths.txt"));
             for (int i = 0; i < paths.length; i++) {
@@ -621,27 +641,6 @@ public class FindFRs {
                     }
                     frPathsOut.write("\n");
                 }
-//                int lastFR = -1;
-//                for (int j = 0; j < paths[i].length; j++) {
-//                    if (nodeFRset.containsKey(paths[i][j])) {
-//                        if (nodeFRset.get(paths[i][j]).first() != lastFR) {
-//                            if (j > 0) {
-//                                frPathsOut.write("-");
-//                            }
-//                            frPathsOut.write("" + nodeFRset.get(paths[i][j]).first());
-//                            lastFR = nodeFRset.get(paths[i][j]).first();
-//                        }
-//                    } else {
-//                        if (lastFR >= -1) {
-//                            if (j > 0) {
-//                                frPathsOut.write("-");
-//                            }
-//                            frPathsOut.write("*");
-//                        }
-//                        lastFR = -2;
-//                    }
-//                }
-
             }
             frPathsOut.close();
 
@@ -649,8 +648,8 @@ public class FindFRs {
             BufferedWriter seqFROut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".csfr.txt"));
             for (String seq : seqFRcount.keySet()) {
                 seqFROut.write(seq);
-                for (int fr : seqFRcount.get(seq).keySet()) {
-                    seqFROut.write("," + fr + ":" + seqFRcount.get(seq).get(fr));
+                for (Integer F : seqFRcount.get(seq).keySet()) {
+                    seqFROut.write("," + F + ":" + seqFRcount.get(seq).get(F));
                 }
                 seqFROut.write("\n");
             }
