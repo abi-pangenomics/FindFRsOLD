@@ -550,10 +550,10 @@ public class FindFRs {
             File resultsDir = new File(rd);
             resultsDir.mkdir();
 
-            int fr = 0;
             HashMap<Integer, TreeSet<Integer>> nodeFRset = new HashMap<Integer, TreeSet<Integer>>();
             BufferedWriter frOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frs.txt"));
-            for (ClusterNode iFR : iFRs) {
+            for (int fr = 0; fr < iFRs.size(); fr++) {
+                ClusterNode iFR = iFRs.get(fr);
                 String frName = "fr-" + fr;
                 TreeSet<Integer> clustNodes = iFR.getNodeSet();
                 frOut.write(frName);
@@ -565,7 +565,6 @@ public class FindFRs {
                     nodeFRset.get(n).add(fr);
                 }
                 frOut.write("\n");
-                fr++;
             }
             frOut.close();
 
@@ -574,8 +573,8 @@ public class FindFRs {
             TreeMap<String, TreeMap<Integer, Integer>> seqFRcount = new TreeMap<String, TreeMap<Integer, Integer>>();
             TreeMap<String, TreeMap<Integer, String>> seqIndxFRstr = new TreeMap<String, TreeMap<Integer, String>>();
             TreeMap<Integer, Integer> frAvgLen = new TreeMap<Integer, Integer>();
-            fr = 0;
-            for (ClusterNode iFR : iFRs) {
+            for (int fr = 0; fr < iFRs.size(); fr++) {
+                ClusterNode iFR = iFRs.get(fr);
                 System.out.println("writing fr-" + fr);
                 ConcurrentLinkedQueue<PathSegment> supportingSegments = computeSupport(iFR, true);
                 if (iFR.parent == null) {
@@ -618,16 +617,14 @@ public class FindFRs {
                     seqIndxFRstr.get(name).put(ps.stop, seqIndxFRstr.get(name).get(ps.stop) + " fr-" + fr + ":" + startStop[1] + "] ");
                 }
                 frAvgLen.put(fr, frAvgLen.get(fr) / supportingSegments.size());
-                fr++;
             }
             bedOut.close();
 
             BufferedWriter distOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".dist.txt"));
             distOut.write("FR,size,support,avg length\n");
-            fr = 0;
-            for (ClusterNode iFR : iFRs) {
+            for (int fr = 0; fr < iFRs.size(); fr++) {
+                ClusterNode iFR = iFRs.get(fr);
                 distOut.write("fr-" + fr + "," + iFR.size + "," + iFR.support + "," + frAvgLen.get(fr) + "\n");
-                fr++;
             }
             distOut.close();
 
