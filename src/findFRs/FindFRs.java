@@ -28,8 +28,8 @@ public class FindFRs {
     static String dotFile = ""; // .dot filename
     static String fastaFile = ""; // .fasta filename
     static int K = -1; // k-mer size
-    static double alpha = 0.0; // epsilon_r parameter
-    //static int maxInsert; // maxInsert parameter
+    static double alpha = 0.7; // epsilon_r parameter
+    static int kappa = 0; // maxInsert parameter
     static int minSup;
     static int minSize;
     //static String filePrefix = ""; // file name prefix
@@ -218,7 +218,7 @@ public class FindFRs {
             int start = 0;
             while (start < locs.length) {
                 int last = start;
-                while (last + 1 < locs.length && locs[last + 1] == locs[last] + 1) {
+                while (last + 1 < locs.length && locs[last + 1] <= locs[last] + 1 + kappa) {
                     last++;
                 }
                 if (last - start + 1 >= alpha * clust.size) {
@@ -525,7 +525,6 @@ public class FindFRs {
 //            clearCPL(clust.right);
 //        }
 //    }
-
     static void outputResults() {
         ClusterNode top;
         ArrayList<ClusterNode> iFRs = new ArrayList<ClusterNode>();
@@ -534,7 +533,7 @@ public class FindFRs {
         }
 
         try {
-            String paramString = "-k" + K + "-a" + alpha + "-sup" + minSup + "-size" + minSize;
+            String paramString = "-k" + K + "-a" + alpha + "-kp" + kappa + "-sup" + minSup + "-size" + minSize;
             String[] tmp = dotFile.split("/");
             String dotName = tmp[tmp.length - 1];
             tmp = fastaFile.split("/");
@@ -665,8 +664,8 @@ public class FindFRs {
 
     public static void main(String[] args) {
         // parse args:
-        if (args.length != 6) {
-            System.out.println("Usage: java findFRs dotFile faFile K alpha minsup minsize");
+        if (args.length < 6 || args.length > 7) {
+            System.out.println("Usage: java findFRs dotFile faFile K alpha kappa minsup minsize");
             System.out.println(Arrays.toString(args));
             System.exit(0);
         }
@@ -674,9 +673,13 @@ public class FindFRs {
         fastaFile = args[1];
         K = Integer.parseInt(args[2]);
         alpha = Double.parseDouble(args[3]);
-        minSup = Integer.parseInt(args[4]);
-        minSize = Integer.parseInt(args[5]);
-        //maxInsert = Integer.parseInt(args[2]);
+        int x = 0;
+        if (args.length == 7) {
+            kappa = Integer.parseInt(args[4]);
+            x = 1;
+        }
+        minSup = Integer.parseInt(args[x+4]);
+        minSize = Integer.parseInt(args[x+5]);
 
         readData();
         buildPaths();
