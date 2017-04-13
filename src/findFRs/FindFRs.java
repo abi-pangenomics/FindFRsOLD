@@ -19,7 +19,7 @@ public class FindFRs {
     static int[][] paths;
 
     static PriorityQueue<ClusterEdge> edgeQ;
-    static PriorityQueue<ClusterNode> bestQ;
+    static PriorityQueue<ClusterNode> iFRQ;
     static ClusterNode[] startNode;
 
     static ConcurrentHashMap<Integer, ClusterNode> nodeCluster;
@@ -221,7 +221,7 @@ public class FindFRs {
                 while (last + 1 < locs.length && locs[last + 1] == locs[last] + 1) {
                     last++;
                 }
-                if (locs[last] - locs[start] + 1 >= alpha * clust.size) {
+                if (last - start + 1 >= alpha * clust.size) {
                     clustSupport.incrementAndGet();
                     if (createPSList) {
                         segList.add(new PathSegment(P, locs[start], locs[last]));
@@ -338,7 +338,7 @@ public class FindFRs {
         }
     }
 
-    static void exploreSolns() {
+    static void findFRs() {
         System.out.println("creating node clusters");
         nodeCluster = new ConcurrentHashMap<Integer, ClusterNode>(g.numNodes);
 
@@ -401,6 +401,8 @@ public class FindFRs {
                     computeSupport(tmpClst, false);
                     tmpClst.pathLocs.clear();
                     ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.support);
+                    tmpClst.left.edges.add(newE);
+                    tmpClst.right.edges.add(newE);
                     edgeQ.add(newE);
                 }
             }
@@ -426,28 +428,27 @@ public class FindFRs {
             }
             roots.add(cur);
         }
-        bestQ = new PriorityQueue<ClusterNode>();
+        iFRQ = new PriorityQueue<ClusterNode>();
         System.out.println("number of root FRs: " + roots.size());
         for (ClusterNode root : roots) {
-            findBestSolns(root, 0);
+            reportIFRs(root, 0);
         }
-        System.out.println("number of iFRs: " + bestQ.size());
-        outputResults();
+        System.out.println("number of iFRs: " + iFRQ.size());
     }
 
-    static void findBestSolns(ClusterNode clust, int parentSup) {
+    static void reportIFRs(ClusterNode clust, int parentSup) {
         if (clust.edges != null) {
             clust.edges.clear();
             clust.edges = null;
         }
         if (clust.support > parentSup && clust.size >= minSize && clust.support >= minSup) {
-            bestQ.add(clust);
+            iFRQ.add(clust);
         }
         if (clust.left != null) {
-            findBestSolns(clust.left, Math.max(parentSup, clust.support));
+            reportIFRs(clust.left, Math.max(parentSup, clust.support));
         }
         if (clust.right != null) {
-            findBestSolns(clust.right, Math.max(parentSup, clust.support));
+            reportIFRs(clust.right, Math.max(parentSup, clust.support));
         }
     }
 
@@ -510,25 +511,25 @@ public class FindFRs {
 //        }
 //        return strain;
 //    }
-    static void clearCPL(ClusterNode clust) {
-        if (clust.node == -1) {
-            if (clust.pathLocs != null) {
-                clust.pathLocs.clear();
-            }
-            clust.pathLocs = null;
-        }
-        if (clust.left != null) {
-            clearCPL(clust.left);
-        }
-        if (clust.right != null) {
-            clearCPL(clust.right);
-        }
-    }
+//    static void clearCPL(ClusterNode clust) {
+//        if (clust.node == -1) {
+//            if (clust.pathLocs != null) {
+//                clust.pathLocs.clear();
+//            }
+//            clust.pathLocs = null;
+//        }
+//        if (clust.left != null) {
+//            clearCPL(clust.left);
+//        }
+//        if (clust.right != null) {
+//            clearCPL(clust.right);
+//        }
+//    }
 
     static void outputResults() {
         ClusterNode top;
         ArrayList<ClusterNode> iFRs = new ArrayList<ClusterNode>();
-        while ((top = bestQ.poll()) != null) {
+        while ((top = iFRQ.poll()) != null) {
             iFRs.add(top);
         }
 
@@ -681,6 +682,7 @@ public class FindFRs {
         buildPaths();
 
         startNode = new ClusterNode[g.numNodes];
-        exploreSolns();
+        findFRs();
+        outputResults();
     }
 }
