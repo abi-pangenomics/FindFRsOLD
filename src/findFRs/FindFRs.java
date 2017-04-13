@@ -345,7 +345,6 @@ public class FindFRs {
         // create initial node clusters
         g.nodePaths.keySet().parallelStream().forEach((N) -> {
             ClusterNode nodeClst = new ClusterNode();
-            //System.out.println("creating cluster node: " + N);
             nodeClst.parent = nodeClst.left = nodeClst.right = null;
             nodeClst.node = N;
             nodeClst.size = 1;
@@ -386,7 +385,6 @@ public class FindFRs {
 
         System.out.println("computing node support");
         for (ClusterNode c : nodeCluster.values()) {
-            //System.out.println("computing support for cluster node: " + c.node);
             computeSupport(c, false);
         }
         // create initial edges
@@ -403,19 +401,14 @@ public class FindFRs {
                     computeSupport(tmpClst, false);
                     tmpClst.pathLocs.clear();
                     ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.support);
-                    tmpClst.left.edges.add(newE);
-                    tmpClst.right.edges.add(newE);
                     edgeQ.add(newE);
                 }
             }
         }
-
-        bestQ = new PriorityQueue<ClusterNode>();
         System.out.println("edge queue size: " + edgeQ.size());
         ClusterEdge e;
         int count = 0;
         while ((e = edgeQ.poll()) != null) {
-            //System.out.println("queue head: " + c.getNodeSet());
             if (e.potentialSup > 0 && e.u.parent == null && e.v.parent == null) {
                 finalizeEdge(e);
             }
@@ -424,7 +417,6 @@ public class FindFRs {
                 System.out.println("# finalized: " + count);
             }
         }
-
         System.out.println("finding root FRs");
         HashSet<ClusterNode> roots = new HashSet<ClusterNode>();
         for (ClusterNode leaf : nodeCluster.values()) {
@@ -434,20 +426,20 @@ public class FindFRs {
             }
             roots.add(cur);
         }
+        bestQ = new PriorityQueue<ClusterNode>();
         System.out.println("number of root FRs: " + roots.size());
         for (ClusterNode root : roots) {
             findBestSolns(root, 0);
         }
         System.out.println("number of iFRs: " + bestQ.size());
-//        while ((c = bestQ.poll()) != null) {
-//            printCluster(c);
-//        }
         outputResults();
     }
 
     static void findBestSolns(ClusterNode clust, int parentSup) {
-        clust.edges.clear();
-        clust.edges = null;
+        if (clust.edges != null) {
+            clust.edges.clear();
+            clust.edges = null;
+        }
         if (clust.support > parentSup && clust.size >= minSize && clust.support >= minSup) {
             bestQ.add(clust);
         }
