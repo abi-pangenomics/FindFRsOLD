@@ -218,7 +218,9 @@ public class FindFRs {
             int start = 0;
             while (start < locs.length) {
                 int last = start;
-                while (last + 1 < locs.length && locs[last + 1] <= locs[last] + 1 + kappa) {
+                while (last + 1 < locs.length
+                        && ((kappa == 0 && locs[last + 1] == locs[last] + 1)
+                        || (kappa > 0 && gap(paths[P], locs[last], locs[last + 1]) <= kappa))) {
                     last++;
                 }
                 if (last - start + 1 >= alpha * clust.size) {
@@ -678,8 +680,8 @@ public class FindFRs {
             kappa = Integer.parseInt(args[4]);
             x = 1;
         }
-        minSup = Integer.parseInt(args[x+4]);
-        minSize = Integer.parseInt(args[x+5]);
+        minSup = Integer.parseInt(args[x + 4]);
+        minSize = Integer.parseInt(args[x + 5]);
 
         readData();
         buildPaths();
