@@ -204,7 +204,11 @@ public class FindFRs {
             curEndLoc = curStartLoc + g.length[path[i]] - 1;
             curStartLoc += g.length[path[i]] - (K - 1);
         }
-        return Math.max(0, curEndLoc - g.length[path[start]] - g.length[path[stop]]);
+        int gp = curEndLoc - g.length[path[start]] - g.length[path[stop]];
+        if (gp <= 0) {
+            return Integer.MAX_VALUE;
+        }
+        return gp;
     }
 
     static ConcurrentLinkedQueue<PathSegment> computeSupport(ClusterNode clust, boolean createPSList) {
@@ -219,7 +223,7 @@ public class FindFRs {
             while (start < locs.length) {
                 int last = start;
                 while (last + 1 < locs.length
-                        && ((kappa == 0 && locs[last + 1] == locs[last] + 1)
+                        && ((locs[last + 1] == locs[last] + 1)
                         || (kappa > 0 && gap(paths[P], locs[last], locs[last + 1]) <= kappa))) {
                     last++;
                 }
