@@ -210,6 +210,14 @@ public class FindFRs {
         }
         return gp;
     }
+    
+    static void findRevComps() {
+        for (int i = 0; i < g.numNodes; i++) {
+            String nodeSeq = new String(fastaConcat, g.starts[i][0], g.length[i]);
+            System.out.println("node " + i + ":" + nodeSeq);
+        }
+        System.exit(0);
+    }
 
     static ConcurrentLinkedQueue<PathSegment> computeSupport(ClusterNode clust, boolean createPSList) {
         if (clust.pathLocs == null) {
@@ -689,6 +697,7 @@ public class FindFRs {
 
         readData();
         buildPaths();
+        findRevComps();
 
         startNode = new ClusterNode[g.numNodes];
         findFRs();
