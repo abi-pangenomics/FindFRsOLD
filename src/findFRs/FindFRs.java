@@ -697,7 +697,7 @@ public class FindFRs {
 
         readData();
         buildPaths();
-        findRevComps();
+        //findRevComps();
 
         startNode = new ClusterNode[g.numNodes];
         findFRs();
