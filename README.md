@@ -5,7 +5,6 @@ A path that contributes to an FR being frequent is called a _supporting path_.
 The algorithm works by iteratively constructing FRs via hierarchical aglomerative clsutering and then traversing the hierarchy and selecting nodes that qualify as clusters according to the given parameters.
 
 ## Parameters
-----
 FindFRs has two required parameters: `alpha` and `kappa`.
 `alpha` is the minimum fraction of the nodes in an FR that each subpath must contain.
 This is referred to as the _penetrance_.
@@ -19,14 +18,12 @@ This is referred to as the _minimum support_.
 This is referred to as the _minimum size_.
 
 ## de Bruijn Graphs
-----
 FrinFRs consumes de Bruijn graphs in the `dot` file format.
 A `dot` file representation of a pan-genome de Bruijn graph can be constructed from a `fasta` using the one of the programs presented in the following works:
 * "SplitMEM: a graphical algorithm for pan-genome analysis with suffix skips"
 * "Efficient Construction of a Compressed de Bruijn Graph for Pan-Genome Analysis"
 
 ## Running
-----
 FindFRs can be run as follows:
 ```
     $ java FindFRs <dotFile> <faFile> <K> <alpha> <kappa> [<minsup> <minsize>]
