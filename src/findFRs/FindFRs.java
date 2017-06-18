@@ -20,7 +20,7 @@ public class FindFRs {
 
     static PriorityQueue<ClusterEdge> edgeQ;
     static PriorityQueue<ClusterNode> iFRQ;
-    static ClusterNode[] startNode;
+    //static ClusterNode[] startNode;
 
     static ConcurrentHashMap<Integer, ClusterNode> nodeCluster;
 
@@ -32,6 +32,7 @@ public class FindFRs {
     static int kappa = 0; // maxInsert parameter
     static int minSup;
     static int minSize;
+    static boolean useRC; // indicates if fasta file was appended with its reverse-complement
     //static String filePrefix = ""; // file name prefix
 
     static String[] colors = {"122,39,25", "92,227,60", "225,70,233", "100,198,222", "232,176,49", "50,39,85",
@@ -210,14 +211,6 @@ public class FindFRs {
         }
         return gp;
     }
-    
-    static void findRevComps() {
-        for (int i = 0; i < g.numNodes; i++) {
-            String nodeSeq = new String(fastaConcat, g.starts[i][0], g.length[i]);
-            System.out.println("node " + i + ":" + nodeSeq);
-        }
-        System.exit(0);
-    }
 
     static ConcurrentLinkedQueue<PathSegment> computeSupport(ClusterNode clust, boolean createPSList) {
         if (clust.pathLocs == null) {
@@ -358,13 +351,15 @@ public class FindFRs {
 
         // create initial node clusters
         g.nodePaths.keySet().parallelStream().forEach((N) -> {
-            ClusterNode nodeClst = new ClusterNode();
-            nodeClst.parent = nodeClst.left = nodeClst.right = null;
-            nodeClst.node = N;
-            nodeClst.size = 1;
-            nodeClst.pathLocs = new ConcurrentHashMap<Integer, int[]>();
-            nodeClst.edges = new ArrayList<ClusterEdge>();
-            nodeCluster.put(N, nodeClst);
+            if (!useRC || g.nodePaths.get(N).first() < paths.length / 2) { // only start with nodes from non-rc'ed paths
+                ClusterNode nodeClst = new ClusterNode();
+                nodeClst.parent = nodeClst.left = nodeClst.right = null;
+                nodeClst.node = N;
+                nodeClst.size = 1;
+                nodeClst.pathLocs = new ConcurrentHashMap<Integer, int[]>();
+                nodeClst.edges = new ArrayList<ClusterEdge>();
+                nodeCluster.put(N, nodeClst);
+            }
         });
         g.nodePaths.clear(); //not used after this
         g.nodePaths = null;
@@ -678,8 +673,8 @@ public class FindFRs {
 
     public static void main(String[] args) {
         // parse args:
-        if (args.length < 6 || args.length > 7) {
-            System.out.println("Usage: java findFRs dotFile faFile K alpha kappa minsup minsize");
+        if (args.length != 9) {
+            System.out.println("Usage: java findFRs dotFile faFile K alpha kappa minsup minsize rcBool");
             System.out.println(Arrays.toString(args));
             System.exit(0);
         }
@@ -687,19 +682,15 @@ public class FindFRs {
         fastaFile = args[1];
         K = Integer.parseInt(args[2]);
         alpha = Double.parseDouble(args[3]);
-        int x = 0;
-        if (args.length == 7) {
-            kappa = Integer.parseInt(args[4]);
-            x = 1;
-        }
-        minSup = Integer.parseInt(args[x + 4]);
-        minSize = Integer.parseInt(args[x + 5]);
+        kappa = Integer.parseInt(args[4]);
+        minSup = Integer.parseInt(args[5]);
+        minSize = Integer.parseInt(args[6]);
+        useRC = args[7].startsWith("T") || args[7].startsWith("t");
 
         readData();
         buildPaths();
-        //findRevComps();
 
-        startNode = new ClusterNode[g.numNodes];
+        //startNode = new ClusterNode[g.numNodes];
         findFRs();
         outputResults();
     }
