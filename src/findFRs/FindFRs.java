@@ -673,7 +673,7 @@ public class FindFRs {
 
     public static void main(String[] args) {
         // parse args:
-        if (args.length != 9) {
+        if (args.length != 8) {
             System.out.println("Usage: java findFRs dotFile faFile K alpha kappa minsup minsize rcBool");
             System.out.println(Arrays.toString(args));
             System.exit(0);
