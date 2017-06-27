@@ -122,22 +122,21 @@ public class FindFRs {
         int seqEnd;
         int prevStart = 0;
         for (Sequence s : sequences) {
+            ArrayList path = new ArrayList<Integer>();
             s.startPos = seqStart;
             s.length = s.seq.length();
             seqEnd = seqStart + s.length - 1;
             curStart = seqStart;
-            boolean seqendCovered = false;
-            ArrayList path = new ArrayList<Integer>();
-            while (!seqendCovered) {
-                path.add(startToNode.get(curStart));
-                if (curStart + g.length[startToNode.get(curStart)] - 1 >= seqEnd) {
-                    seqendCovered = true;
-                }
-                curStart += g.length[startToNode.get(curStart)] - (K - 1);
-
+            while (curStart > 0 && !startToNode.containsKey(curStart)) {
+                curStart--;
             }
+            do {
+                path.add(startToNode.get(curStart));
+                curStart += g.length[startToNode.get(curStart)] - (K - 1);
+            } while (curStart + g.length[startToNode.get(curStart)] - 1 < seqEnd);
+
             pathsAL.add(path);
-            //System.out.println(path);
+            System.out.println(path);
             seqStart = seqEnd + 2;
 
             fastaConcatLen += 1 + s.seq.length();
@@ -463,20 +462,27 @@ public class FindFRs {
 
     static int[] findFastaLoc(PathSegment ps) {
         int[] startStop = new int[2];
-        int curPos = sequences.get(ps.path).startPos;
+        int curStart = sequences.get(ps.path).startPos;
+
+        while (curStart > 0 && !startToNode.containsKey(curStart)) {
+            curStart--;
+        }
 
         int curIndex = 0;
         while (curIndex != ps.start) {
-            curPos += g.length[startToNode.get(curPos)] - (K - 1);
+            curStart += g.length[startToNode.get(curStart)] - (K - 1);
             curIndex++;
         }
-        startStop[0] = curPos - sequences.get(ps.path).startPos; // assume fasta seq indices start at 0
+        int offset = Math.max(0, sequences.get(ps.path).startPos - curStart);
+        startStop[0] = curStart - sequences.get(ps.path).startPos + offset; // assume fasta seq indices start at 0
         while (curIndex != ps.stop) {
-            curPos += g.length[startToNode.get(curPos)] - (K - 1);
+            curStart += g.length[startToNode.get(curStart)] - (K - 1);
             curIndex++;
         }
-        startStop[1] = curPos + g.length[startToNode.get(curPos)] - 1 - sequences.get(ps.path).startPos + 1; // last position is excluded in BED format
-        return startStop; // *** TODO *** deal with $ in final kmer node
+        int seqLastPos = sequences.get(ps.path).startPos + sequences.get(ps.path).length - 1;
+        startStop[1] = Math.min(seqLastPos, curStart + g.length[startToNode.get(curStart)] - 1)
+                - sequences.get(ps.path).startPos + 1; // last position is excluded in BED format
+        return startStop;
     }
 
 //    static void printCluster(ClusterNode cluster) {
