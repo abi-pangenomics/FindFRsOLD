@@ -148,7 +148,7 @@ public class ReadInput {
             if (line.charAt(0) != '>') {
                 throw new IOException("First line of " + file + " should start with '>'");
             } else {
-                desc.add(line);
+                desc.add(line.substring(1));
             }
             for (line = in.readLine().trim(); line != null; line = in.readLine()) {
                 if (line.length() > 0 && line.charAt(0) == '>') {

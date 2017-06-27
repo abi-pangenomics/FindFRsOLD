@@ -130,13 +130,14 @@ public class FindFRs {
             while (curStart > 0 && !startToNode.containsKey(curStart)) {
                 curStart--;
             }
+            path.add(startToNode.get(curStart));
             do {
-                path.add(startToNode.get(curStart));
                 curStart += g.length[startToNode.get(curStart)] - (K - 1);
+                path.add(startToNode.get(curStart));
             } while (curStart + g.length[startToNode.get(curStart)] - 1 < seqEnd);
 
             pathsAL.add(path);
-            System.out.println(path);
+            //System.out.println(path);
             seqStart = seqEnd + 2;
 
             fastaConcatLen += 1 + s.seq.length();
@@ -350,7 +351,8 @@ public class FindFRs {
 
         // create initial node clusters
         g.nodePaths.keySet().parallelStream().forEach((N) -> {
-            if (!useRC || g.nodePaths.get(N).first() < paths.length / 2) { // only start with nodes from non-rc'ed paths
+            if (!g.nodePaths.get(N).isEmpty()
+                    && (!useRC || g.nodePaths.get(N).first() < paths.length / 2)) { // only start with nodes from non-rc'ed paths
                 ClusterNode nodeClst = new ClusterNode();
                 nodeClst.parent = nodeClst.left = nodeClst.right = null;
                 nodeClst.node = N;
