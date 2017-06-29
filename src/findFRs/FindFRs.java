@@ -15,7 +15,7 @@ public class FindFRs {
     static ArrayList<Sequence> sequences;
     static char[] fastaConcat;
     static int fastaConcatLen;
-    static TreeMap<Integer, Integer> startToNode;
+    static TreeMap<Long, Integer> startToNode;
     static int[][] paths;
 
     static PriorityQueue<ClusterEdge> edgeQ;
@@ -83,13 +83,13 @@ public class FindFRs {
     static void readData() {
         g = ReadInput.readDotFile(dotFile);
 
-        startToNode = new TreeMap<Integer, Integer>();
+        startToNode = new TreeMap<Long, Integer>();
         for (int i = 0; i < g.starts.length; i++) {
             for (int j = 0; j < g.starts[i].length; j++) {
                 startToNode.put(g.starts[i][j], i);
             }
-            int firstStart = g.starts[i][0];
-            g.starts[i] = new int[1]; // only save 1st start
+            long firstStart = g.starts[i][0];
+            g.starts[i] = new long[1]; // only save 1st start
             g.starts[i][0] = firstStart;
         }
 
@@ -117,10 +117,10 @@ public class FindFRs {
 //    }
     static void buildPaths() {
         ArrayList<ArrayList<Integer>> pathsAL = new ArrayList<ArrayList<Integer>>();
-        int curStart = 1;
-        int seqStart = 1;
-        int seqEnd;
-        int prevStart = 0;
+        long curStart = 1;
+        long seqStart = 1;
+        long seqEnd;
+        //long prevStart = 0;
         for (Sequence s : sequences) {
             ArrayList path = new ArrayList<Integer>();
             s.startPos = seqStart;
@@ -133,25 +133,25 @@ public class FindFRs {
             path.add(startToNode.get(curStart));
             do {
                 curStart += g.length[startToNode.get(curStart)] - (K - 1);
-                path.add(startToNode.get(curStart));
-            } while (curStart + g.length[startToNode.get(curStart)] - 1 < seqEnd);
+                if (startToNode.containsKey(curStart)) {
+                    path.add(startToNode.get(curStart));
+                }
+            } while (startToNode.containsKey(curStart) && curStart + g.length[startToNode.get(curStart)] - 1 < seqEnd);
 
             pathsAL.add(path);
-            //System.out.println(path);
             seqStart = seqEnd + 2;
-
-            fastaConcatLen += 1 + s.seq.length();
+            //fastaConcatLen += 1 + s.seq.length();
         }
-        fastaConcatLen++;
-        fastaConcat = new char[fastaConcatLen];
-        for (Sequence s : sequences) {
-            fastaConcat[s.startPos - 1] = '$';
-            for (int i = 0; i < s.length; i++) {
-                fastaConcat[s.startPos + i] = s.seq.charAt(i);
-            }
-            s.seq = null; // no longer needed
-        }
-        fastaConcat[fastaConcat.length - 1] = '$';
+//        fastaConcatLen++;
+//        fastaConcat = new char[fastaConcatLen];
+//        for (Sequence s : sequences) {
+//            fastaConcat[s.startPos - 1] = '$';
+//            for (int i = 0; i < s.length; i++) {
+//                fastaConcat[s.startPos + i] = s.seq.charAt(i);
+//            }
+//            s.seq = null; // no longer needed
+//        }
+//        fastaConcat[fastaConcat.length - 1] = '$';
         //System.out.println(Arrays.toString(fastaConcat));
         System.out.println("number of paths: " + pathsAL.size());
 
@@ -159,7 +159,7 @@ public class FindFRs {
         for (int i = 0; i < pathsAL.size(); i++) {
             ArrayList<Integer> path = pathsAL.get(i);
             paths[i] = new int[path.size()];
-            for (int j = 0; j < paths[i].length; j++) {
+            for (int j = 0; j < path.size(); j++) {
                 paths[i][j] = path.get(j);
             }
         }
@@ -172,12 +172,12 @@ public class FindFRs {
         g.containsN = new boolean[g.numNodes];
         for (int i = 0; i < g.numNodes; i++) {
             g.containsN[i] = false;
-            for (int j = 0; j < g.length[i]; j++) {
-                if (fastaConcat[g.starts[i][0] + j] == 'N') {
-                    g.containsN[i] = true;
-                    break;
-                }
-            }
+//            for (int j = 0; j < g.length[i]; j++) {
+//                if (fastaConcat[g.starts[i][0] + j] == 'N') {
+//                    g.containsN[i] = true;
+//                    break;
+//                }
+//            }
         }
 
         // find paths for each node:
@@ -462,9 +462,9 @@ public class FindFRs {
         }
     }
 
-    static int[] findFastaLoc(PathSegment ps) {
-        int[] startStop = new int[2];
-        int curStart = sequences.get(ps.path).startPos;
+    static long[] findFastaLoc(PathSegment ps) {
+        long[] startStop = new long[2];
+        long curStart = sequences.get(ps.path).startPos;
 
         while (curStart > 0 && !startToNode.containsKey(curStart)) {
             curStart--;
@@ -475,13 +475,13 @@ public class FindFRs {
             curStart += g.length[startToNode.get(curStart)] - (K - 1);
             curIndex++;
         }
-        int offset = Math.max(0, sequences.get(ps.path).startPos - curStart);
+        long offset = Math.max(0, sequences.get(ps.path).startPos - curStart);
         startStop[0] = curStart - sequences.get(ps.path).startPos + offset; // assume fasta seq indices start at 0
         while (curIndex != ps.stop) {
             curStart += g.length[startToNode.get(curStart)] - (K - 1);
             curIndex++;
         }
-        int seqLastPos = sequences.get(ps.path).startPos + sequences.get(ps.path).length - 1;
+        long seqLastPos = sequences.get(ps.path).startPos + sequences.get(ps.path).length - 1;
         startStop[1] = Math.min(seqLastPos, curStart + g.length[startToNode.get(curStart)] - 1)
                 - sequences.get(ps.path).startPos + 1; // last position is excluded in BED format
         return startStop;
@@ -603,8 +603,8 @@ public class FindFRs {
                         seqFRcount.get(name).put(fr, 0);
                     }
                     seqFRcount.get(name).put(fr, seqFRcount.get(name).get(fr) + 1);
-                    int[] startStop = findFastaLoc(ps);
-                    int frLen = startStop[1] - startStop[0]; // last position is excluded
+                    long[] startStop = findFastaLoc(ps);
+                    int frLen = (int) (startStop[1] - startStop[0]); // last position is excluded
                     frAvgLen.put(fr, frLen + frAvgLen.get(fr));
 
                     bedOut.write(name // chrom

@@ -73,9 +73,9 @@ public class ReadInput {
                 g.neighbor[i][j++] = jobj;
             }
         }
-        g.starts = new int[g.numNodes][];
+        g.starts = new long[g.numNodes][];
         for (int i = 0; i < g.neighbor.length; i++) {
-            g.starts[i] = new int[nodeStarts.get(i).size()];
+            g.starts[i] = new long[nodeStarts.get(i).size()];
             int j = 0;
             for (Integer jobj : nodeStarts.get(i)) {
                 g.starts[i][j++] = jobj;
