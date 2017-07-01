@@ -217,7 +217,8 @@ public class FindFRs {
             clust.findPathLocs();
         }
         ConcurrentLinkedQueue<PathSegment> segList = new ConcurrentLinkedQueue<PathSegment>();
-        AtomicInteger clustSupport = new AtomicInteger(0);
+        AtomicInteger fSup = new AtomicInteger(0);
+        AtomicInteger rSup = new AtomicInteger(0);
         clust.pathLocs.keySet().parallelStream().forEach((P) -> {
             int[] locs = clust.pathLocs.get(P);
             int start = 0;
@@ -229,7 +230,12 @@ public class FindFRs {
                     last++;
                 }
                 if (last - start + 1 >= alpha * clust.size) {
-                    clustSupport.incrementAndGet();
+                    if (!useRC || P < paths.length / 2) {
+                        fSup.incrementAndGet();
+                    }
+                    if (useRC && P >= paths.length / 2) {
+                        rSup.incrementAndGet();
+                    }
                     if (createPSList) {
                         segList.add(new PathSegment(P, locs[start], locs[last]));
                     }
@@ -237,7 +243,8 @@ public class FindFRs {
                 start = last + 1;
             }
         });
-        clust.support = clustSupport.get();
+        clust.fwdSup = fSup.get();
+        clust.rcSup = rSup.get();
         if (createPSList) {
             return segList;
         }
@@ -338,7 +345,7 @@ public class FindFRs {
             tmpClst.size = tmpClst.left.size + tmpClst.right.size;
             computeSupport(tmpClst, false);
             tmpClst.pathLocs.clear();
-            ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.support);
+            ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
             newRoot.edges.add(newE);
             n.edges.add(newE);
             edgeQ.add(newE);
@@ -410,7 +417,7 @@ public class FindFRs {
                     tmpClst.size = 2;
                     computeSupport(tmpClst, false);
                     tmpClst.pathLocs.clear();
-                    ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.support);
+                    ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
                     tmpClst.left.edges.add(newE);
                     tmpClst.right.edges.add(newE);
                     edgeQ.add(newE);
@@ -451,14 +458,17 @@ public class FindFRs {
             clust.edges.clear();
             clust.edges = null;
         }
-        if (clust.support > parentSup && clust.size >= minSize && clust.support >= minSup) {
+        if (clust.fwdSup + clust.rcSup > parentSup
+                && clust.size >= minSize
+                && clust.fwdSup + clust.rcSup >= minSup
+                && clust.fwdSup >= clust.rcSup) {
             iFRQ.add(clust);
         }
         if (clust.left != null) {
-            reportIFRs(clust.left, Math.max(parentSup, clust.support));
+            reportIFRs(clust.left, Math.max(parentSup, clust.fwdSup + clust.rcSup));
         }
         if (clust.right != null) {
-            reportIFRs(clust.right, Math.max(parentSup, clust.support));
+            reportIFRs(clust.right, Math.max(parentSup, clust.fwdSup + clust.rcSup));
         }
     }
 
@@ -611,7 +621,7 @@ public class FindFRs {
                             + "\t" + startStop[0] // chromStart (starts with 0)
                             + "\t" + startStop[1] // chromEnd
                             + "\t" + "fr-" + fr// name
-                            + "\t" + Math.round(iFR.support) // score
+                            + "\t" + Math.round(iFR.fwdSup + iFR.rcSup) // score
                             + "\t+" // strand
                             + "\t" + 0 // thickstart
                             + "\t" + 0 // thickend
@@ -630,7 +640,7 @@ public class FindFRs {
                     seqIndxFRstr.get(name).get(ps.start).addFirst(" [fr-" + fr + ":" + startStop[0]);
                     seqIndxFRstr.get(name).get(ps.stop).addLast(" fr-" + fr + ":" + startStop[1] + "] ");
                 }
-                frAvgLen.put(fr, frAvgLen.get(fr) / iFR.support);
+                frAvgLen.put(fr, frAvgLen.get(fr) / (iFR.fwdSup+iFR.rcSup));
             }
             bedOut.close();
 
@@ -639,7 +649,7 @@ public class FindFRs {
             distOut.write("FR,size,support,avg length\n");
             for (int fr = 0; fr < iFRs.size(); fr++) {
                 ClusterNode iFR = iFRs.get(fr);
-                distOut.write("fr-" + fr + "," + iFR.size + "," + iFR.support + "," + frAvgLen.get(fr) + "\n");
+                distOut.write("fr-" + fr + "," + iFR.size + "," + (iFR.fwdSup+ iFR.rcSup) + "," + frAvgLen.get(fr) + "\n");
             }
             distOut.close();
 
