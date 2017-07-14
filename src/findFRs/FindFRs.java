@@ -561,6 +561,9 @@ public class FindFRs {
 
         try {
             String paramString = "-k" + K + "-a" + alpha + "-kp" + kappa + "-sup" + minSup + "-size" + minSize;
+            if (useRC) {
+                paramString += "-rc";
+            }
             String[] tmp = dotFile.split("/");
             String dotName = tmp[tmp.length - 1];
             tmp = fastaFile.split("/");
@@ -640,7 +643,7 @@ public class FindFRs {
                     seqIndxFRstr.get(name).get(ps.start).addFirst(" [fr-" + fr + ":" + startStop[0]);
                     seqIndxFRstr.get(name).get(ps.stop).addLast(" fr-" + fr + ":" + startStop[1] + "] ");
                 }
-                frAvgLen.put(fr, frAvgLen.get(fr) / (iFR.fwdSup+iFR.rcSup));
+                frAvgLen.put(fr, frAvgLen.get(fr) / (iFR.fwdSup + iFR.rcSup));
             }
             bedOut.close();
 
@@ -649,7 +652,7 @@ public class FindFRs {
             distOut.write("FR,size,support,avg length\n");
             for (int fr = 0; fr < iFRs.size(); fr++) {
                 ClusterNode iFR = iFRs.get(fr);
-                distOut.write("fr-" + fr + "," + iFR.size + "," + (iFR.fwdSup+ iFR.rcSup) + "," + frAvgLen.get(fr) + "\n");
+                distOut.write("fr-" + fr + "," + iFR.size + "," + (iFR.fwdSup + iFR.rcSup) + "," + frAvgLen.get(fr) + "\n");
             }
             distOut.close();
 
