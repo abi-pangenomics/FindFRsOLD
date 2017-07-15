@@ -596,6 +596,8 @@ public class FindFRs {
             TreeMap<String, TreeMap<Integer, Integer>> seqFRcount = new TreeMap<String, TreeMap<Integer, Integer>>();
             TreeMap<String, TreeMap<Integer, LinkedList<String>>> seqIndxFRstr = new TreeMap<String, TreeMap<Integer, LinkedList<String>>>();
             TreeMap<Integer, Integer> frAvgLen = new TreeMap<Integer, Integer>();
+            int[] pathTotalSupLen = new int[paths.length];
+
             for (int fr = 0; fr < iFRs.size(); fr++) {
                 ClusterNode iFR = iFRs.get(fr);
                 if ((fr % 100) == 0) {
@@ -617,7 +619,8 @@ public class FindFRs {
                     }
                     seqFRcount.get(name).put(fr, seqFRcount.get(name).get(fr) + 1);
                     long[] startStop = findFastaLoc(ps);
-                    int frLen = (int) (startStop[1] - startStop[0]); // last position is excluded
+                    int frLen = (int) (startStop[1] - startStop[0]); // last position is excluded                                     
+                    pathTotalSupLen[ps.path] += frLen;
                     frAvgLen.put(fr, frLen + frAvgLen.get(fr));
 
                     bedOut.write(name // chrom
@@ -656,6 +659,16 @@ public class FindFRs {
             }
             distOut.close();
 
+            if (useRC) {
+                System.out.println("writing rc file");
+                BufferedWriter rcOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".rc.txt"));
+                for (int i = 0; i < paths.length / 2; i++) {
+                    if (pathTotalSupLen[i + paths.length / 2] > pathTotalSupLen[i]) {
+                        rcOut.write(sequences.get(i).label + "\n");
+                    }
+                }
+                rcOut.close();
+            }
             System.out.println("writing frpaths file");
             BufferedWriter frPathsOut = new BufferedWriter(new FileWriter(rd + filePrefix + paramString + ".frpaths.txt"));
             for (int i = 0; i < paths.length; i++) {
