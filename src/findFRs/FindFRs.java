@@ -212,7 +212,7 @@ public class FindFRs {
         return gp;
     }
 
-    static ConcurrentLinkedQueue<PathSegment> computeSupport(ClusterNode clust, boolean createPSList) {
+    static ConcurrentLinkedQueue<PathSegment> computeSupport(ClusterNode clust, boolean createPSList, boolean findAvgLen) {
         if (clust.pathLocs == null) {
             clust.findPathLocs();
         }
@@ -240,16 +240,18 @@ public class FindFRs {
                     if (createPSList) {
                         segList.add(new PathSegment(P, locs[start], locs[last]));
                     }
-                    long[] startStop = findFastaLoc(P, locs[start], locs[last]);
-                    int len = (int) (startStop[1] - startStop[0]); // last pos is exclusive
-                    supLen.getAndAdd(len);
+                    if (findAvgLen) {
+                        long[] startStop = findFastaLoc(P, locs[start], locs[last]);
+                        int len = (int) (startStop[1] - startStop[0]); // last pos is exclusive
+                        supLen.getAndAdd(len);
+                    }
                 }
                 start = last + 1;
             }
         });
         clust.fwdSup = fSup.get();
         clust.rcSup = rSup.get();
-        if (clust.fwdSup + clust.rcSup > 0) {
+        if (findAvgLen && clust.fwdSup + clust.rcSup > 0) {
             clust.avgLen = supLen.get() / (clust.fwdSup + clust.rcSup);
         }
         if (createPSList) {
@@ -314,7 +316,7 @@ public class FindFRs {
         newRoot.size = newRoot.left.size + newRoot.right.size;
         newRoot.left.parent = newRoot;
         newRoot.right.parent = newRoot;
-        computeSupport(newRoot, false);
+        computeSupport(newRoot, false, false);
 
         //System.out.println("merging: left size: " + e.u.size + " right size: " + e.v.size + " support: " + e.potentialSup);
         TreeSet<ClusterNode> neighbors = new TreeSet<ClusterNode>();
@@ -342,7 +344,7 @@ public class FindFRs {
             tmpClst.right = n;
             tmpClst.parent = null;
             tmpClst.size = tmpClst.left.size + tmpClst.right.size;
-            computeSupport(tmpClst, false);
+            computeSupport(tmpClst, false, false);
             tmpClst.pathLocs.clear();
             ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
             newRoot.edges.add(newE);
@@ -401,7 +403,7 @@ public class FindFRs {
 
         System.out.println("computing node support");
         for (ClusterNode c : nodeCluster.values()) {
-            computeSupport(c, false);
+            computeSupport(c, false, false);
         }
         // create initial edges
         edgeQ = new PriorityQueue<ClusterEdge>();
@@ -414,7 +416,7 @@ public class FindFRs {
                     tmpClst.right = nodeCluster.get(g.neighbor[N][i]);
                     tmpClst.parent = null;
                     tmpClst.size = 2;
-                    computeSupport(tmpClst, false);
+                    computeSupport(tmpClst, false, false);
                     tmpClst.pathLocs.clear();
                     ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
                     tmpClst.left.edges.add(newE);
@@ -458,10 +460,12 @@ public class FindFRs {
             clust.edges = null;
         }
         if ((clust.fwdSup + clust.rcSup) > parentSup
-                && clust.avgLen >= minLen
                 && (clust.fwdSup + clust.rcSup) >= minSup
                 && clust.fwdSup >= clust.rcSup) {
-            iFRQ.add(clust);
+            computeSupport(clust, false, true);
+            if (clust.avgLen >= minLen) {
+                iFRQ.add(clust);
+            }
         }
         if (clust.left != null) {
             reportIFRs(clust.left, Math.max(parentSup, clust.fwdSup + clust.rcSup));
@@ -559,7 +563,7 @@ public class FindFRs {
                 if ((fr % 100) == 0) {
                     System.out.println("writing fr-" + fr);
                 }
-                ConcurrentLinkedQueue<PathSegment> supportingSegments = computeSupport(iFR, true);
+                ConcurrentLinkedQueue<PathSegment> supportingSegments = computeSupport(iFR, true, false);
                 for (PathSegment ps : supportingSegments) {
                     String name = sequences.get(ps.path).label;
                     if (!seqFRcount.containsKey(name)) {
