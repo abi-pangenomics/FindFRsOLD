@@ -96,25 +96,6 @@ public class FindFRs {
         sequences = ReadInput.readFastaFile(fastaFile);
     }
 
-//    static int[] removeDuplicates(int[] a) {
-//        int[] b = null;
-//
-//        if (a.length > 0) {
-//            ArrayList<Integer> B = new ArrayList<Integer>();
-//            B.add(a[0]);
-//            for (int i = 1; i < a.length; i++) {
-//                if (a[i] != B.get(B.size() - 1)) {
-//                    B.add(a[i]);
-//                }
-//            }
-//            int i = 0;
-//            b = new int[B.size()];
-//            for (Integer pobj : B) {
-//                b[i++] = pobj;
-//            }
-//        }
-//        return b;
-//    }
     static void buildPaths() {
         ArrayList<ArrayList<Integer>> pathsAL = new ArrayList<ArrayList<Integer>>();
         long curStart = 1;
@@ -260,52 +241,6 @@ public class FindFRs {
         return null;
     }
 
-//    static ConcurrentLinkedQueue<PathSegment> findSupport(ClusterNode clust) {
-//        ConcurrentLinkedQueue<PathSegment> segList = new ConcurrentLinkedQueue<PathSegment>();
-//        ConcurrentHashMap<Integer, TreeSet<Integer>> cPL;
-//        if (clust.pathLocs != null) {
-//            cPL = clust.pathLocs;
-//        } else {
-//            cPL = new ConcurrentHashMap<Integer, TreeSet<Integer>>();
-//            clust.addLocs(cPL);
-//            clust.pathLocs = cPL;
-//        }
-//        cPL.keySet().parallelStream().forEach((P) -> {
-//            TreeSet<Integer> locs = cPL.get(P);
-//            Iterator<Integer> iter = locs.iterator();
-//            Integer start = iter.next();
-//            Integer last = start;
-//            while (iter.hasNext()) {
-//                Integer next = iter.next();
-//                if (next > last + 1) {
-//                    if (last - start + 1 >= alpha * clust.size) {
-//                        PathSegment ps = new PathSegment();
-//                        ps.path = P;
-//                        ps.start = start;
-//                        ps.stop = last;
-//                        segList.add(ps);
-//                    }
-//                    start = next;
-//                }
-//                last = next;
-//            }
-//            if (last - start + 1 >= alpha * clust.size) {
-//                PathSegment ps = new PathSegment();
-//                ps.path = P;
-//                ps.start = start;
-//                ps.stop = last;
-//                segList.add(ps);
-//            }
-//        });
-//        return segList;
-//    }
-//    static void addToQueue(ClusterNode clust) {
-//        clust.size = clust.left.size + clust.right.size;
-//        computeSupport(clust, false);
-//        if (clust.support >= 0.9 * minSup) {
-//            edgeQ.add(clust);
-//        }
-//    }
     static void finalizeEdge(ClusterEdge e) {
         ClusterNode newRoot = new ClusterNode();
         newRoot.left = e.u;
