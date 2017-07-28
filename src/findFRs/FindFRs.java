@@ -309,11 +309,10 @@ public class FindFRs {
         newRoot.right.parent = newRoot;
         computeSupport(newRoot, false);
         
-        System.out.println("merging: left size: " + e.u.size + " right size: " + e.v.size + " support: " + e.potentialSup);
+        //System.out.println("merging: left size: " + e.u.size + " right size: " + e.v.size + " support: " + e.potentialSup);
 
         TreeSet<ClusterNode> neighbors = new TreeSet<ClusterNode>();
-        for (int i = 0; i < e.u.edges.size(); i++) {
-            ClusterEdge ce = e.u.edges.get(i);
+        for (ClusterEdge ce : e.u.edges) {
             ClusterNode n = ce.other(e.u);
             if (n != e.v && n.parent == null) {
                 neighbors.add(n);
@@ -322,8 +321,7 @@ public class FindFRs {
             n.edges.remove(ce);
         }
         e.u.edges.clear();
-        for (int i = 0; i < e.v.edges.size(); i++) {
-            ClusterEdge ce = e.v.edges.get(i);
+        for (ClusterEdge ce : e.v.edges) {
             ClusterNode n = ce.other(e.v);
             if (n != e.u && n.parent == null) {
                 neighbors.add(n);
