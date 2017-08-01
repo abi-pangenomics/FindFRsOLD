@@ -49,6 +49,12 @@ public class ClusterNode implements Comparable<ClusterNode> {
             return 1 + parent.depth();
         }
     }
+    
+    ClusterNode findRoot() {
+        if (parent == null)
+            return this;
+        else return parent.findRoot();
+    }
 
     void addNodes(TreeSet<Integer> ns) {
         if (left == null && right == null) {

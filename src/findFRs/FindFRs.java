@@ -372,15 +372,47 @@ public class FindFRs {
                 System.out.println("# finalized: " + count);
             }
         }
+
+        // recheck initial edges
+        System.out.println("rechecking edges");
+        for (Integer N : nodeCluster.keySet()) {
+            for (int i = 0; i < g.neighbor[N].length; i++) {
+                if (nodeCluster.containsKey(g.neighbor[N][i])) {
+                    ClusterNode uroot = nodeCluster.get(N).findRoot();
+                    ClusterNode vroot = nodeCluster.get(g.neighbor[N][i]).findRoot();
+                    if (uroot != vroot) {
+                        ClusterNode tmpClst = new ClusterNode();
+                        tmpClst.left = uroot;
+                        tmpClst.right = vroot;
+                        tmpClst.parent = null;
+                        tmpClst.size = uroot.size + vroot.size;
+                        computeSupport(tmpClst, false, false);
+                        tmpClst.pathLocs.clear();
+                        ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
+                        tmpClst.left.edges.add(newE);
+                        tmpClst.right.edges.add(newE);
+                        edgeQ.add(newE);
+                    }
+                }
+            }
+        }
+        System.out.println("recheck edge queue size: " + edgeQ.size());
+        count = 0;
+        while ((e = edgeQ.poll()) != null) {
+            if (e.potentialSup > 0 && e.u.parent == null && e.v.parent == null) {
+                finalizeEdge(e);
+            }
+            count++;
+            if (count % 1000 == 0) {
+                System.out.println("# finalized: " + count);
+            }
+        }
         System.out.println("finding root FRs");
         HashSet<ClusterNode> roots = new HashSet<ClusterNode>();
         for (ClusterNode leaf : nodeCluster.values()) {
-            ClusterNode cur = leaf;
-            while (cur.parent != null) {
-                cur = cur.parent;
-            }
-            roots.add(cur);
+            roots.add(leaf.findRoot());
         }
+
         iFRQ = new PriorityQueue<ClusterNode>();
         System.out.println("number of root FRs: " + roots.size());
         for (ClusterNode root : roots) {
