@@ -353,10 +353,12 @@ public class FindFRs {
                     tmpClst.size = 2;
                     computeSupport(tmpClst, false, false);
                     tmpClst.pathLocs.clear();
-                    ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
-                    tmpClst.left.edges.add(newE);
-                    tmpClst.right.edges.add(newE);
-                    edgeQ.add(newE);
+                    if (tmpClst.fwdSup + tmpClst.rcSup > 0) {
+                        ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
+                        tmpClst.left.edges.add(newE);
+                        tmpClst.right.edges.add(newE);
+                        edgeQ.add(newE);
+                    }
                 }
             }
         }
@@ -366,8 +368,8 @@ public class FindFRs {
         while ((e = edgeQ.poll()) != null) {
             if (e.potentialSup > 0 && e.u.parent == null && e.v.parent == null) {
                 finalizeEdge(e);
+                count++;
             }
-            count++;
             if (count % 1000 == 0) {
                 System.out.println("# finalized: " + count);
             }
@@ -388,10 +390,12 @@ public class FindFRs {
                         tmpClst.size = uroot.size + vroot.size;
                         computeSupport(tmpClst, false, false);
                         tmpClst.pathLocs.clear();
-                        ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
-                        tmpClst.left.edges.add(newE);
-                        tmpClst.right.edges.add(newE);
-                        edgeQ.add(newE);
+                        if (tmpClst.fwdSup + tmpClst.rcSup > 0) {
+                            ClusterEdge newE = new ClusterEdge(tmpClst.left, tmpClst.right, tmpClst.fwdSup + tmpClst.rcSup);
+                            tmpClst.left.edges.add(newE);
+                            tmpClst.right.edges.add(newE);
+                            edgeQ.add(newE);
+                        }
                     }
                 }
             }
@@ -401,8 +405,8 @@ public class FindFRs {
         while ((e = edgeQ.poll()) != null) {
             if (e.potentialSup > 0 && e.u.parent == null && e.v.parent == null) {
                 finalizeEdge(e);
+                count++;
             }
-            count++;
             if (count % 1000 == 0) {
                 System.out.println("# finalized: " + count);
             }
