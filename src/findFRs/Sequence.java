@@ -13,5 +13,5 @@ public class Sequence {
     String label;
     String seq;
     int length;
-    int startPos;
+    long startPos;
 }

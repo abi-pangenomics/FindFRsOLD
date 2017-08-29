@@ -73,9 +73,9 @@ public class ReadInput {
                 g.neighbor[i][j++] = jobj;
             }
         }
-        g.starts = new int[g.numNodes][];
+        g.starts = new long[g.numNodes][];
         for (int i = 0; i < g.neighbor.length; i++) {
-            g.starts[i] = new int[nodeStarts.get(i).size()];
+            g.starts[i] = new long[nodeStarts.get(i).size()];
             int j = 0;
             for (Integer jobj : nodeStarts.get(i)) {
                 g.starts[i][j++] = jobj;
@@ -148,7 +148,7 @@ public class ReadInput {
             if (line.charAt(0) != '>') {
                 throw new IOException("First line of " + file + " should start with '>'");
             } else {
-                desc.add(line);
+                desc.add(line.substring(1));
             }
             for (line = in.readLine().trim(); line != null; line = in.readLine()) {
                 if (line.length() > 0 && line.charAt(0) == '>') {

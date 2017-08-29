@@ -17,14 +17,11 @@ public class ClusterNode implements Comparable<ClusterNode> {
     int node = -1;
     ClusterNode parent, left, right;
     ConcurrentHashMap<Integer, int[]> pathLocs;
-    int size = 0;
-    int support;
-//    HashSet<ClusterNode> possibleParents;
-    //boolean finalized = false;
+    int size = 0, fwdSup = 0, rcSup = 0, avgLen = 0;
     ArrayList<ClusterEdge> edges;
 
     public int compareTo(ClusterNode other) {
-        int result = Integer.compare(other.support, support);
+        int result = Integer.compare(other.fwdSup + other.rcSup, fwdSup + rcSup);
         if (result == 0) {
             result = Integer.compare(other.size, size);
         }
@@ -51,6 +48,12 @@ public class ClusterNode implements Comparable<ClusterNode> {
         } else {
             return 1 + parent.depth();
         }
+    }
+    
+    ClusterNode findRoot() {
+        if (parent == null)
+            return this;
+        else return parent.findRoot();
     }
 
     void addNodes(TreeSet<Integer> ns) {
