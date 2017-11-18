@@ -1,3 +1,5 @@
+**The new multi-threaded C++ implementation will be available shortly. Thanks for your patience!**
+
 # FindFRs
 FindFRs is a Java implementation of the Frequented Regions algorithm presented at the ACM BCB 2017 conference: "Exploring Frequented Regions in Pan-Genoimc Graphs".
 A _Frequented Region_ (FR) is a region in a pan-genome de Bruijn graph that is frequently traversed by a subset of the genome paths in the graph.
